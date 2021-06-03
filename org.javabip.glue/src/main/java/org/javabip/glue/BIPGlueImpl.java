@@ -70,7 +70,7 @@ class BIPGlueImpl implements BIPGlue {
 
 		this.dataWires = new ArrayList<DataWireImpl>();
 		for (DataWire dataWire : dataWires) {
-			this.dataWires.add(new DataWireImpl(dataWire.getFrom(), dataWire.getTo()));
+			this.dataWires.add(new DataWireImpl(dataWire.getFrom(), dataWire.getTo(), dataWire.isCopy()));
 		}
 
 	}

@@ -337,7 +337,20 @@ public abstract class GlueBuilder {
 			if (dataId.equals(""))
 				throw new IllegalArgumentException("DataId can not be an empty string.");
 
-			glue.addDataWire(new DataWireImpl(from, new PortBaseImpl(dataId, getComponentType(spec))));
+			glue.addDataWire(new DataWireImpl(from, new PortBaseImpl(dataId, getComponentType(spec)), false));
+
+		}
+
+		public void copyTo(Class<?> spec, String dataId) {
+
+			if (dataId == null)
+				throw new IllegalArgumentException("DataId can not be null.");
+			if (spec == null)
+				throw new IllegalArgumentException("Spec type can not be null");
+			if (dataId.equals(""))
+				throw new IllegalArgumentException("DataId can not be an empty string.");
+
+			glue.addDataWire(new DataWireImpl(from, new PortBaseImpl(dataId, getComponentType(spec)), true));
 
 		}
 
