@@ -8,11 +8,10 @@
 
 package org.javabip.executor;
 
-import javafx.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.javabip.api.*;
 import org.javabip.exceptions.BIPException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
@@ -41,7 +40,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 	protected boolean registered = false;
 
-	private Logger logger = LoggerFactory.getLogger(ExecutorKernel.class);
+	protected static final Logger logger = LogManager.getLogger();
+	//private Logger logger = LoggerFactory.getLogger(ExecutorKernel.class);
 
 	private Map<String, Object> dataEvaluation = new Hashtable<String, Object>();
 
@@ -134,18 +134,15 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 		guardToValue = behaviour.computeGuardsWithoutData(behaviour.getCurrentState());
 
-		//check invariant before transition
-		//System.out.println("Invariant check before a transition.");
-		checkInvariant();
+		//check invariant before a transition
+		logger.debug("Invariant check at the beginning of each step {}", id);
+		behaviour.checkInvariant();
 
 		// we have to compute this in order to be able to raise an exception
 		boolean existInternalTransition = behaviour.existEnabledInternal(guardToValue);
 
 		if (existInternalTransition) {
 			logger.debug("About to execute internal transition for component {}", id);
-
-			//compute invariant before
-			behaviour.checkInvariant();
 
 			behaviour.executeInternal(guardToValue);
 			logger.debug("Issuing next step message for component {}", id);
@@ -158,8 +155,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 			logger.debug("Finishing current step that has executed an internal transition for component {}", id);
 
 			//check invariant after transition
-			System.out.println("Invariant check after an internal transition.");
-			checkInvariant();
+			logger.debug("Invariant check after an internal transition {}", id);
+			behaviour.checkInvariant();
 
 			return;
 		}
@@ -197,7 +194,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 					//check invariant after transition
 					System.out.println("Invariant check after a spontaneous transition.");
-					checkInvariant();
+					behaviour.checkInvariant();
 
 					return;
 				}
@@ -248,22 +245,6 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 		// + behaviour.getCurrentState() + " in component "
 		// + this.getId());
 
-	}
-
-	private void checkInvariant() {
-		try {
-			Pair<Boolean, String> result = behaviour.checkInvariant();
-			if ( !result.getKey()) {
-				//logger.error("INVARIANT VIOLATION!");
-				System.out.println("INVARIANT VIOLATION: " + result.getValue());
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void checkStatePredicate(){
-		behaviour.checkStatePredicate(behaviour.getCurrentState());
 	}
 
 	/**
@@ -354,7 +335,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 				result = clazz.cast(methodResult);
 
 		} catch (Throwable e) {
-			ExceptionHelper.printExceptionTrace(logger, e);
+			ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
 			e.printStackTrace();
 		}
 		return result;
