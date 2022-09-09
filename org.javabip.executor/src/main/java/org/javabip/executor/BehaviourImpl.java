@@ -19,10 +19,10 @@
 package org.javabip.executor;
 
 import javafx.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.javabip.api.*;
 import org.javabip.exceptions.BIPException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.InvocationTargetException;
@@ -108,7 +108,8 @@ class BehaviourImpl implements ExecutableBehaviour {
     private Object bipComponent;
     private Class<?> componentClass;
 
-    private Logger logger = LoggerFactory.getLogger(BehaviourImpl.class);
+    //private Logger logger = LoggerFactory.getLogger(BehaviourImpl.class);
+    protected static final Logger logger = LogManager.getLogger();
 
     // ******************************** Constructors *********************************************
 
@@ -643,18 +644,18 @@ class BehaviourImpl implements ExecutableBehaviour {
             performTransition(transition);
 
         } catch (SecurityException e) {
-            ExceptionHelper.printExceptionTrace(logger, e, errorMessage);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e, errorMessage);
         } catch (IllegalAccessException e) {
-            ExceptionHelper.printExceptionTrace(logger, e, errorMessage);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e, errorMessage);
         } catch (IllegalArgumentException e) {
-            ExceptionHelper.printExceptionTrace(logger, e, errorMessage);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e, errorMessage);
         } catch (InvocationTargetException e) {
-            ExceptionHelper.printExceptionTrace(logger, e, errorMessage);
-            ExceptionHelper.printExceptionTrace(logger, e.getCause());
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e, errorMessage);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e.getCause());
         } catch (BIPException e) {
-            ExceptionHelper.printExceptionTrace(logger, e, errorMessage);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e, errorMessage);
         } catch (Throwable e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         }
     }
 
@@ -693,18 +694,18 @@ class BehaviourImpl implements ExecutableBehaviour {
 
             performTransition(transition);
         } catch (SecurityException e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         } catch (IllegalAccessException e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         } catch (IllegalArgumentException e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         } catch (InvocationTargetException e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
-            ExceptionHelper.printExceptionTrace(logger, e.getTargetException());
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e.getTargetException());
         } catch (BIPException e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         } catch (Throwable e) {
-            ExceptionHelper.printExceptionTrace(logger, e);
+            ExceptionHelper.printExceptionTrace(logger.getMessageFactory(), e);
         }
 
     }
@@ -720,22 +721,23 @@ class BehaviourImpl implements ExecutableBehaviour {
 
     // ****************************** End of Execution *******************************************
 
-    // ****************************** Invariants *******************************************
+    // ****************************** Runtime Verification ***************************************
 
     @Override
     public Pair<Boolean, String> checkInvariant() {
         if (invariant != null)
             synchronized (this) {
                 try {
-                    //return invariant.evaluateInvariant(componentClass, bipComponent);
-                    return new Pair(invariant.evaluateInvariant(componentClass, bipComponent), invariant.expression());
-                } catch (Exception e) { //TODO throw custom exception
+                    Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent), invariant.expression());
+                    if ( !result.getKey()) {
+                        logger.error("Invariant violation: " + result.getValue());
+                    }
+                } catch (Exception e) {
                     e.printStackTrace();
-                    throw e;
                 }
             }
-        //if there is no precondition we just ignore this execution
-        return new Pair(true, "");
+        //if there is no invariant we just ignore this execution
+        return new Pair<>(true, "");
     }
 
     @Override
@@ -744,26 +746,26 @@ class BehaviourImpl implements ExecutableBehaviour {
         String message;
         if (pre) {
             condition = transitionToPreConditionMap.get((TransitionImpl) transition);
-            message = "PRE-CONDITION VIOLATION: ";
+            message = "Pre-condition violation: ";
         } else {
             condition = transitionToPostConditionMap.get((TransitionImpl) transition);
-            message = "POST-CONDITION VIOLATION: ";
+            message = "Post-condition violation: ";
         }
 
         if (condition != null) {
             synchronized (this) {
                 try {
-                    Pair<Boolean, String> result = new Pair(condition.evaluateInvariant(componentClass, bipComponent), condition.expression());
+                    Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent), condition.expression());
                     if (!result.getKey()) {
-                        System.out.println(message + result.getValue());
+                        logger.error(message + result.getValue());
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    throw e;
                 }
             }
         }
-        return new Pair(true, "");
+        //if there is no conditions we just ignore this execution
+        return new Pair<>(true, "");
     }
 
     @Override
@@ -772,22 +774,20 @@ class BehaviourImpl implements ExecutableBehaviour {
         if (statePredicate != null) {
             synchronized (this) {
                 try {
-                    //return invariant.evaluateInvariant(componentClass, bipComponent);
-                    Pair<Boolean, String> result = new Pair(statePredicate.evaluateInvariant(componentClass, bipComponent), statePredicate.expression());
+                    Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent), statePredicate.expression());
                     if (!result.getKey()) {
-                        System.out.println("STATE PREDICATE VIOLATION: " + result.getValue() + ", STATE: " + currentState);
+                        logger.error("State predicate violation: " + result.getValue() + ", for the state: " + currentState);
                     }
-                } catch (Exception e) { //TODO throw custom exception
+                } catch (Exception e) {
                     e.printStackTrace();
-                    throw e;
                 }
             }
         }
-        //if there is no precondition we just ignore this execution
-        return new Pair(true, "");
+        //if there is no state predicate for a state we just ignore this execution
+        return new Pair<>(true, "");
     }
 
 
-    // ****************************** End of Invariant *******************************************
+    // ****************************** End of Runtime Verification *******************************************
 
 }

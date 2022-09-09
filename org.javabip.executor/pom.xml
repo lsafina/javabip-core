@@ -43,7 +43,7 @@
 			<artifactId>antlr4</artifactId>
 		</dependency>
 
-		<dependency>
+		<!--<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 		</dependency>
@@ -56,8 +56,16 @@
  		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
+		</dependency>-->
+
+		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>2.18.0</version>
 		</dependency>
-		
+
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -72,7 +80,7 @@
 		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>antlr4-runtime</artifactId>
-			<version>4.8-1</version>
+			<version>4.9.2</version>
 		</dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -83,6 +91,11 @@
 			<groupId>org.openjfx</groupId>
 			<artifactId>javafx-base</artifactId>
 			<version>17-ea+11</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>2.0.0</version>
 		</dependency>
 
 	</dependencies>
@@ -120,7 +133,8 @@
 						<include>**/org/javabip/executor/*Tests.class</include>
 					</includes>
 					<systemPropertyVariables>
-						<log4j.configuration>file:${basedir}/src/test/resources/log4j-build.properties</log4j.configuration>
+						<!--<log4j.configuration>file:${basedir}/src/test/resources/log4j-build.properties</log4j.configuration>-->
+						<log4j.configuration>file:${basedir}/log4j.properties</log4j.configuration>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>
