@@ -381,15 +381,15 @@ public class BehaviourBuilder {
     }
 
     public void buildInvariant(String invariant) {
-		this.invariant = new InvariantImpl(invariant, buildPredicate(invariant), component);
+		this.invariant = new InvariantImpl(invariant, buildPredicate(invariant));
     }
 
     public InvariantImpl buildTransitionCondition(String condition) {
-		return new InvariantImpl(condition, buildPredicate(condition), component);
+		return new InvariantImpl(condition, buildPredicate(condition));
     }
 
     public void buildStatePredicate(String condition, String currentState) {
-        stateToPredicateMap.put(currentState, new InvariantImpl(condition, buildPredicate(condition), component));
+        stateToPredicateMap.put(currentState, new InvariantImpl(condition, buildPredicate(condition)));
     }
 
 	public ParsedJavaExpression buildPredicate(String expression){
