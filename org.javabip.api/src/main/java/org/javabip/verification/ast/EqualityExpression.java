@@ -3,7 +3,7 @@ package org.javabip.verification.ast;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
 
 public class EqualityExpression extends BinaryExpression implements ParsedJavaExpression {
-    public EqualityExpression(ParsedJavaExpression left, ParsedJavaExpression right, String separator){
+    public EqualityExpression(ParsedJavaExpression left, ParsedJavaExpression right, String separator) {
         super(left, right, separator);
     }
 
@@ -16,9 +16,15 @@ public class EqualityExpression extends BinaryExpression implements ParsedJavaEx
             case "!=":
                 return left != right;
             case "==": {
-                if (left == null){
+                if (left == null) {
                     return right == null;
-                } else return left.equals(right);
+                } else
+                    //compare numbers
+                    if (left instanceof Number && right instanceof Number) {
+                        return (((Number) left).doubleValue()) == ((Number) right).doubleValue();
+                    }
+                //compare everything else
+                return left.equals(right);
             }
 
             default: {

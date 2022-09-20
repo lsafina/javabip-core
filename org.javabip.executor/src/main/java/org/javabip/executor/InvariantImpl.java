@@ -23,23 +23,14 @@ package org.javabip.executor;
 import org.javabip.api.Invariant;
 import org.javabip.verification.ast.ParsedJavaExpression;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class InvariantImpl implements Invariant {
-
-	private Logger logger = LoggerFactory.getLogger(InvariantImpl.class);
-
 	private final String expression;
+	private final ParsedJavaExpression parsedExpression;
 
-	private ParsedJavaExpression parsedExpression;
-
-	Object bipComponent;
-
-	public InvariantImpl(String expression, ParsedJavaExpression invariantParsedExpression, Object bipComponent) {
+	public InvariantImpl(String expression, ParsedJavaExpression invariantParsedExpression) {
 		this.expression = expression;
 		this.parsedExpression = invariantParsedExpression;
-		this.bipComponent = bipComponent;
 	}
 
 	public String expression() {
@@ -47,13 +38,7 @@ class InvariantImpl implements Invariant {
 	}
 
 	public String toString() {
-		StringBuilder result = new StringBuilder();
-		result
-				.append("Invariant=(expr = ")
-				.append(expression())
-				.append(")");
-
-		return result.toString();
+		return "Invariant=(" + expression() + ")";
 	}
 
 	public boolean evaluateInvariant( Class<?> componentClass, Object bipComponent ) {

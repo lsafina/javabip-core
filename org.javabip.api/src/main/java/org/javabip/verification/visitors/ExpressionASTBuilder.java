@@ -3,6 +3,8 @@ package org.javabip.verification.visitors;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.tree.TerminalNodeImpl;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.javabip.verification.ast.*;
 import org.javabip.verification.parser.JavaParser;
 import org.javabip.verification.parser.JavaParserBaseVisitor;
@@ -13,10 +15,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ExpressionASTBuilder extends JavaParserBaseVisitor {
-    Object component;
+    protected static final Logger logger = LogManager.getLogger();
+    Object parentObject;
 
-    public ExpressionASTBuilder(Object component) {
-        this.component = component;
+    public ExpressionASTBuilder(Object bipComponent) {
+        this.parentObject = bipComponent;
     }
 
     public ParsedJavaExpression build(ParseTree t) {
@@ -49,8 +52,7 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
     public ParsedJavaExpression visitExpression(JavaParser.ExpressionContext ctx) {
         List<ParseTree> children = ctx.children;
         if (children == null) {
-            System.out.println();
-            //TODO exception
+            logger.error("Malformed Expression: " + ctx.getText());
         }
 
         switch (children.size()) {
@@ -64,13 +66,13 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
             }
             case 3: {
                 //case: dot-separated expression
-                ParseTree pt = children.get(1);
-                if (pt instanceof TerminalNodeImpl && pt.getText().equals(".")) {
-                    return buildDotSeparatedExpression(children);
+                ParseTree separator = children.get(1);
+                if (separator instanceof TerminalNodeImpl && separator.getText().equals(".")) {
+                    return buildDotSeparatedExpression(ctx);
                 }
 
                 //case: binary expressions
-                return buildBinaryExpression(children);
+                return buildBinaryExpression(ctx);
 
             }
             case 4: {
@@ -91,17 +93,6 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         }
         return null;
         //TODO throw an exception
-    }
-
-    private ParsedJavaExpression buildDotSeparatedExpression(List<ParseTree> children) {
-        ParsedJavaExpression left = build(children.get(0));
-        ParsedJavaExpression right = build(children.get(2));
-        if (right instanceof AfterDotExpression){
-            return new DotSeparatedExpression(left, (AfterDotExpression) right);
-        } else {
-            //TODO throw exception
-            return null;
-        }
     }
 
     @Override
@@ -150,8 +141,14 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         //parse methodBase
         ParsedJavaExpression methodBase = build(ctx.children.get(0));
         if (!(methodBase instanceof MethodCallBase)) {
-            //TODO throw error
+            logger.error("Malformed Expression: " + ctx.getText());
+            return null;
         }
+
+        /*//ugly way of saying an identifier that it represents a method name
+        if (methodBase instanceof IdentifierExpression){
+            ((IdentifierExpression) methodBase).setIsMethodNameToTrue();
+        }*/
 
         //parse arguments if present
         ArrayList<ParsedJavaExpression> arguments = new ArrayList<>();
@@ -161,7 +158,7 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         }
         List<ParsedJavaExpression> argumentsNotNull = arguments.stream().filter(Objects::nonNull).collect(Collectors.toList());
 
-        return new MethodCallExpression((MethodCallBase) methodBase, (ArrayList<org.javabip.verification.ast.ParsedJavaExpression>) argumentsNotNull);
+        return new MethodCallExpression((MethodCallBase) methodBase, (ArrayList<org.javabip.verification.ast.ParsedJavaExpression>) argumentsNotNull, parentObject);
     }
 
     @Override
@@ -170,38 +167,24 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         if (identifier != null) {
             String identifierName = identifier.getText();
             Optional<Field> field = checkFieldExists(identifierName);
+            Optional<Method> method = checkMethodExists(identifierName);
+
             if (field.isPresent()) {
-                try {
-                    return new IdentifierExpression(identifierName, field.get(), component);
-                } catch (Exception e) {
-
-                }
-            } else {
-                Optional<Method> method = checkMethodExists(identifierName);
-                if (method.isPresent()){
-                    return new MethodIdentifierExpression(identifierName, method.get(), component);
-                }
+                if (method.isPresent())
+                    return new IdentifierExpression(identifierName, field.get(), method.get(), parentObject);
+                else
+                    return new IdentifierExpression(identifierName, field.get(), parentObject);
+            } else if (method.isPresent()) {
+                return new IdentifierExpression(identifierName, method.get(), parentObject);
             }
-            //TODO exception, malformed, no assosiated field or method
+
+            // TODO log that we have encountered an id that does not present in the object as a field or a method
+            //  (e.g. could be for array.length or when the expression is malformed)
+            return new IdentifierExpression(identifierName, parentObject);
         }
 
+        logger.error("Malformed Expression: " + ctx.getText() + " is not an identifier");
         return null;
-        //TODO should throw error since we are not interested in any other terminals that identifier
-
-    }
-
-    private Optional<Field> checkFieldExists(String fieldName) {
-        try {
-            return Optional.of(component.getClass().getDeclaredField(fieldName));
-        } catch (NoSuchFieldException e) {
-            //e.printStackTrace();
-            return Optional.empty();
-        }
-    }
-
-    private Optional<Method> checkMethodExists(String methodName) {
-        Method[] declaredMethods = component.getClass().getDeclaredMethods();
-        return Arrays.stream(declaredMethods).filter(m -> m.getName().equals(methodName)).findFirst();
     }
 
     @Override
@@ -283,7 +266,7 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         }
 
         return null;
-        //TODO this is incorrect, an error should be thrown herereturn  null;
+        //TODO this is incorrect, an error should be thrown here
     }
 
     @Override
@@ -291,20 +274,21 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         return null;
     }
 
-    private ParsedJavaExpression buildBinaryExpression(List<ParseTree> children) {
+    private ParsedJavaExpression buildBinaryExpression(JavaParser.ExpressionContext ctx) {
+        List<ParseTree> children = ctx.children;
         ParsedJavaExpression left = build(children.get(0));
         ParsedJavaExpression right = build(children.get(2));
 
-        ParseTree separatorTree = children.get(1);
-        if (separatorTree instanceof TerminalNodeImpl) {
-            String value = separatorTree.getText();
+        ParseTree separator = children.get(1);
+        if (separator instanceof TerminalNodeImpl) {
+            String value = separator.getText();
             switch (value) {
                 case ".": {
                     // case: afterDotExpression
                     if (right instanceof AfterDotExpression) {
                         return new DotSeparatedExpression(left, (AfterDotExpression) right);
                     } else {
-                        //TODO error
+                        logger.error("Malformed Expression: " + ctx.getText() + ". The right part is expected to be a field, a method call or this.");
                     }
                     break;
                 }
@@ -341,7 +325,7 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
                 }
             }
         } else {
-            //TODO error
+            logger.error("Malformed Expression: " + ctx.getText() + ". Can not parse a separator.");
         }
         return null;
     }
@@ -380,5 +364,32 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         ParsedJavaExpression outerExpression = build(children.get(0));
         ParsedJavaExpression innerExpression = build(children.get(2));
         return new ArrayExpression(outerExpression, innerExpression);
+    }
+
+    private ParsedJavaExpression buildDotSeparatedExpression(JavaParser.ExpressionContext ctx) {
+        List<ParseTree> children = ctx.children;
+        ParsedJavaExpression left = build(children.get(0));
+        ParsedJavaExpression right = build(children.get(2));
+        if (right instanceof AfterDotExpression){
+            return new DotSeparatedExpression(left, (AfterDotExpression) right);
+        } else {
+            logger.error("Malformed Expression: " + ctx.getText() + ". The right part is expected to be a field, a method call or this.");
+            return null;
+        }
+    }
+
+    // TODO good candidates for utils
+    private Optional<Field> checkFieldExists(String fieldName) {
+        try {
+            return Optional.of(parentObject.getClass().getDeclaredField(fieldName));
+        } catch (NoSuchFieldException e) {
+            //e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private Optional<Method> checkMethodExists(String methodName) {
+        Method[] declaredMethods = parentObject.getClass().getDeclaredMethods();
+        return Arrays.stream(declaredMethods).filter(m -> m.getName().equals(methodName)).findFirst();
     }
 }
