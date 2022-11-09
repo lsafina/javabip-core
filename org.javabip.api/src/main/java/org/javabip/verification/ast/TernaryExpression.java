@@ -1,8 +1,12 @@
 package org.javabip.verification.ast;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
 
 public class TernaryExpression implements ParsedJavaExpression {
+    protected static final Logger logger = LogManager.getLogger();
+
     final ParsedJavaExpression condition;
     final ParsedJavaExpression trueExpression;
     final ParsedJavaExpression falseExpression;
@@ -22,7 +26,16 @@ public class TernaryExpression implements ParsedJavaExpression {
     }
 
     @Override
-    public Boolean accept(PJEEvaluateVisitor v) {
+    public Object accept(PJEEvaluateVisitor v) {
+        Object accept = condition.accept(v);
+        if (accept instanceof Boolean){
+            if ((Boolean) accept)
+                return trueExpression.accept(v);
+            else
+                return falseExpression.accept(v);
+        }
+
+        logger.error("Malformed Expression: " + this.toString());
         return null;
     }
 }

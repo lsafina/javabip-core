@@ -1,15 +1,19 @@
 package org.javabip.verification.ast;
 
+import org.javabip.annotations.Guard;
+import org.javabip.annotations.Pure;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.lang.reflect.Parameter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MethodCallExpression implements ParsedJavaExpression, AfterDotExpression {
     MethodCallBase methodCallBase;
-    ArrayList<ParsedJavaExpression> arguments;
+    ArrayList<ParsedJavaExpression> parsedArguments;
 
     public void setParentObject(Object parentObject) {
         this.parentObject = parentObject;
@@ -17,18 +21,18 @@ public class MethodCallExpression implements ParsedJavaExpression, AfterDotExpre
 
     private Object parentObject;
 
-    public MethodCallExpression(MethodCallBase methodCallBase, ArrayList<ParsedJavaExpression> arguments, Object parentObject) {
+    public MethodCallExpression(MethodCallBase methodCallBase, ArrayList<ParsedJavaExpression> parsedArguments, Object parentObject) {
         this.methodCallBase = methodCallBase;
-        this.arguments = arguments;
+        this.parsedArguments = parsedArguments;
         this.parentObject = parentObject;
     }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(methodCallBase.toString()).append("(");
-        arguments.forEach(a -> sb.append(a.toString()).append(", "));
+        parsedArguments.forEach(a -> sb.append(a.toString()).append(", "));
         int length = sb.length();
-        if (arguments.size() > 0) sb.delete(length - 2, length);
+        if (parsedArguments.size() > 0) sb.delete(length - 2, length);
         sb.append(")");
         return sb.toString();
     }
@@ -37,16 +41,27 @@ public class MethodCallExpression implements ParsedJavaExpression, AfterDotExpre
     public Object accept(PJEEvaluateVisitor v) {
         if (methodCallBase instanceof IdentifierExpression) {
             IdentifierExpression id = (IdentifierExpression) this.methodCallBase;
-            Optional<Method> associatedMethod = id.getAssociatedMethod();
-            if (associatedMethod.isPresent()) {
-                Method method = associatedMethod.get();
-                method.setAccessible(true);
-                try {
-                    return method.invoke(parentObject, arguments.toArray());
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                } catch (InvocationTargetException e) {
-                    e.printStackTrace();
+            List<Method> associatedMethods = id.getAssociatedMethods();
+            if (!associatedMethods.isEmpty()) {
+                Method method = resolveMethod(associatedMethods, parsedArguments);
+                if (method == null) return null; //TODO log errror
+
+                Annotation[] annotations = method.getAnnotations();
+                Arrays.stream(annotations).filter(annotation -> annotation instanceof Guard);
+
+
+                //check for pure?
+                Optional<Annotation> pureAnnotation = Arrays.stream(annotations).filter(annotation -> annotation instanceof Pure).findFirst();
+                if (pureAnnotation.isPresent()) {
+                    method.setAccessible(true);
+                    try {
+                        Object[] evaluatedArguments = parsedArguments.stream().map(argument -> argument.accept(v)).toArray();
+                        return method.invoke(parentObject, evaluatedArguments);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 
@@ -62,8 +77,40 @@ public class MethodCallExpression implements ParsedJavaExpression, AfterDotExpre
         return null;
     }
 
-    /*public Object evaluateId(Object parentObject){
-        return evaluate(parentObject);
+    private Method resolveMethod(List<Method> associatedMethods, ArrayList<ParsedJavaExpression> arguments) {
+        int argumentsSize = arguments.size();
+        List<Method> prunedBySize = associatedMethods.stream().filter(method -> method.getParameters().length == argumentsSize).collect(Collectors.toList());
+
+        int prunedListSize = prunedBySize.size();
+        switch (prunedListSize) {
+            case 0: {
+                return null;
+            }
+            case 1: {
+                return prunedBySize.get(0);
+            }
+            default: {
+                for (Method method : prunedBySize) {
+                    if (compareParameters(method.getParameters(), arguments))
+                        return method;
+                }
+                return null;
+            }
+        }
     }
-    private Object evaluate(Object parentObject){}*/
+
+    private Boolean compareParameters(Parameter[] parameters, ArrayList<ParsedJavaExpression> arguments) {
+        Iterator<Parameter> iteratorParameter = Arrays.stream(parameters).iterator();
+        Iterator<ParsedJavaExpression> iteratorArgument = arguments.iterator();
+        while (iteratorParameter.hasNext()) {
+            if (!compareTwoArguments(iteratorParameter.next(), iteratorArgument.next()))
+                return false;
+        }
+        return true;
+    }
+
+    private Boolean compareTwoArguments(Parameter parameter, ParsedJavaExpression argument) {
+        //TODO
+        return true;
+    }
 }

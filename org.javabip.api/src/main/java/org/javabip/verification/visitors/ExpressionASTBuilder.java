@@ -81,18 +81,32 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
             }
             case 5: {
                 //case: ternary expression
-                //TODO ternary expression
+                return buildTernaryExpression(ctx);
             }
             default: {
-                //TODO error
+                return logError("Malformed Expression: " + ctx.getText());
             }
         }
+    }
 
-        for (ParseTree ch : children) {
-            Object accept = ch.accept(this);
+    private ParsedJavaExpression buildTernaryExpression(JavaParser.ExpressionContext ctx) {
+        List<ParseTree> children = ctx.children;
+        if (!(children.get(1) instanceof TerminalNodeImpl && children.get(1).getText().equals("?"))) {
+            return logError("Malformed Expression: " + ctx.getText());
         }
+        if (!(children.get(3) instanceof TerminalNodeImpl && children.get(3).getText().equals(":"))) {
+            return logError("Malformed Expression: " + ctx.getText());
+        }
+
+        return new TernaryExpression(
+                (ParsedJavaExpression) children.get(0).accept(this),
+                (ParsedJavaExpression) children.get(2).accept(this),
+                (ParsedJavaExpression) children.get(4).accept(this));
+    }
+
+    private ParsedJavaExpression logError(String ctx) {
+        logger.error(ctx);
         return null;
-        //TODO throw an exception
     }
 
     @Override
@@ -141,14 +155,8 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         //parse methodBase
         ParsedJavaExpression methodBase = build(ctx.children.get(0));
         if (!(methodBase instanceof MethodCallBase)) {
-            logger.error("Malformed Expression: " + ctx.getText());
-            return null;
+            return logError("Malformed Expression: " + ctx.getText());
         }
-
-        /*//ugly way of saying an identifier that it represents a method name
-        if (methodBase instanceof IdentifierExpression){
-            ((IdentifierExpression) methodBase).setIsMethodNameToTrue();
-        }*/
 
         //parse arguments if present
         ArrayList<ParsedJavaExpression> arguments = new ArrayList<>();
@@ -167,24 +175,14 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         if (identifier != null) {
             String identifierName = identifier.getText();
             Optional<Field> field = checkFieldExists(identifierName);
-            Optional<Method> method = checkMethodExists(identifierName);
+            List<Method> methods = checkMethodExists(identifierName);
 
-            if (field.isPresent()) {
-                if (method.isPresent())
-                    return new IdentifierExpression(identifierName, field.get(), method.get(), parentObject);
-                else
-                    return new IdentifierExpression(identifierName, field.get(), parentObject);
-            } else if (method.isPresent()) {
-                return new IdentifierExpression(identifierName, method.get(), parentObject);
-            }
-
-            // TODO log that we have encountered an id that does not present in the object as a field or a method
-            //  (e.g. could be for array.length or when the expression is malformed)
-            return new IdentifierExpression(identifierName, parentObject);
+            return field
+                    .map(value -> new IdentifierExpression(identifierName, value, methods, parentObject))
+                    .orElseGet(() -> new IdentifierExpression(identifierName, methods, parentObject));
         }
 
-        logger.error("Malformed Expression: " + ctx.getText() + " is not an identifier");
-        return null;
+        return logError("Malformed Expression: " + ctx.getText() + " is not an identifier");
     }
 
     @Override
@@ -370,11 +368,10 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         List<ParseTree> children = ctx.children;
         ParsedJavaExpression left = build(children.get(0));
         ParsedJavaExpression right = build(children.get(2));
-        if (right instanceof AfterDotExpression){
+        if (right instanceof AfterDotExpression) {
             return new DotSeparatedExpression(left, (AfterDotExpression) right);
         } else {
-            logger.error("Malformed Expression: " + ctx.getText() + ". The right part is expected to be a field, a method call or this.");
-            return null;
+            return logError("Malformed Expression: " + ctx.getText() + ". The right part is expected to be a field, a method call or this.");
         }
     }
 
@@ -388,8 +385,8 @@ public class ExpressionASTBuilder extends JavaParserBaseVisitor {
         }
     }
 
-    private Optional<Method> checkMethodExists(String methodName) {
+    private List<Method> checkMethodExists(String methodName) {
         Method[] declaredMethods = parentObject.getClass().getDeclaredMethods();
-        return Arrays.stream(declaredMethods).filter(m -> m.getName().equals(methodName)).findFirst();
+        return Arrays.stream(declaredMethods).filter(m -> m.getName().equals(methodName)).collect(Collectors.toList());
     }
 }
