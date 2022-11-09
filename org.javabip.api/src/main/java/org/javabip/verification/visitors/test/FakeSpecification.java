@@ -1,6 +1,9 @@
 package org.javabip.verification.visitors.test;
 
 import org.javabip.annotations.Guard;
+import org.javabip.annotations.Pure;
+
+import java.util.function.Function;
 
 class FakeSpecification {
     Integer bet;
@@ -17,6 +20,31 @@ class FakeSpecification {
         this.secretNumber = secretNumber;
         this.win = win;
         this.values = values;
+    }
+
+    /*public Boolean win() {
+        return win;
+    }*/
+
+    @Guard(name = "WIN")
+    @Pure
+    public Boolean win(Integer probability) {
+        return win;
+    }
+
+    @Pure
+    public Boolean win(Function<Boolean, Boolean> f) {
+        return win;
+    }
+
+    @Pure
+    public Boolean lose(Boolean b) {
+        return win;
+    }
+
+    @Pure
+    public Boolean win() {
+        return win;
     }
 
     public Integer getBet() {

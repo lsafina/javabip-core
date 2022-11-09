@@ -12,8 +12,8 @@ public class IntegerExpression implements NumericLiteral {
     }
 
     @Override
-    public Double accept(PJEEvaluateVisitor v) {
-        return value.doubleValue();
+    public Integer accept(PJEEvaluateVisitor v) {
+        return value;
     }
 
     public enum IntegerType { DECIMAL_LITERAL, HEX_LITERAL, OCT_LITERAL, BINARY_LITERAL }
