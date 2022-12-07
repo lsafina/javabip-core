@@ -21,7 +21,7 @@ public class VerCorsReportParser {
     final String TRANSITIONS = "transitions";
     final String PROVEN = "proven";
     final String NOT_PROVEN = "not proven";
-    final String DATA = "data";
+    final String SIGNATURE = "signature";
     final String NAME = "name";
     final String SOURCE = "source";
     final String TARGET = "target";
@@ -67,7 +67,7 @@ public class VerCorsReportParser {
                     Boolean transactionPostConditionResult = parseInvariantResult(String.valueOf(results.get(POST_CONDITION)));
 
                     //collect transaction data
-                    JSONObject data = (JSONObject) transaction.get(DATA);
+                    JSONObject data = (JSONObject) transaction.get(SIGNATURE);
                     Object guard = data.get(GUARD);
 
                     transactionReports.add(
