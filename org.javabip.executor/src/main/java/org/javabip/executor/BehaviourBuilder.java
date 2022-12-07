@@ -59,7 +59,7 @@ public class BehaviourBuilder {
     private ArrayList<DataOutImpl<?>> dataOut;
 
     //verification annotations
-    private InvariantImpl invariant;
+    private InvariantImpl componentInvariant;
     private HashMap<TransitionImpl, InvariantImpl> transitionToPreConditionMap = new HashMap<>();
     private HashMap<TransitionImpl, InvariantImpl> transitionToPostConditionMap = new HashMap<>();
     private HashMap<String, InvariantImpl> stateToPredicateMap = new HashMap<>();
@@ -82,7 +82,7 @@ public class BehaviourBuilder {
      * @return a new behaviour instance
      * @throws BIPException
      */
-    public ExecutableBehaviour build(ComponentProvider provider) throws BIPException {
+    public ExecutableBehaviour build(ComponentProvider provider, boolean useRuntimeVerification) throws BIPException {
         if (componentType == null || componentType.isEmpty()) {
             throw new NullPointerException("Component type for object " + component + " cannot be null or empty.");
         }
@@ -121,8 +121,13 @@ public class BehaviourBuilder {
             data.computeAllowedPort(allEnforceablePorts);
         }
 
-        return new BehaviourImpl(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
-                states, guards.values(), dataOut, dataOutName, component, invariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap);
+        if (useRuntimeVerification)
+            return new BehaviourImplRV(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
+                    states, guards.values(), dataOut, dataOutName, component, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap);
+        else
+            return new BehaviourImpl(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
+                states, guards.values(), dataOut, dataOutName, component /*, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap*/);
+
     }
 
     private ArrayList<ExecutableTransition> transformIntoExecutableTransition() {
@@ -380,8 +385,10 @@ public class BehaviourBuilder {
         return methodHandle;
     }
 
-    public void buildInvariant(String invariant) {
-		this.invariant = new InvariantImpl(invariant, buildPredicate(invariant));
+    /** Building predicates for Runtime Monitoring */
+
+    public void buildComponentInvariant(String invariant) {
+		this.componentInvariant = new InvariantImpl(invariant, buildPredicate(invariant));
     }
 
     public InvariantImpl buildTransitionCondition(String condition) {

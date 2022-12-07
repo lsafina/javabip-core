@@ -24,9 +24,15 @@ import org.javabip.api.Behaviour;
 import org.javabip.api.ComponentProvider;
 import org.javabip.api.ExecutableBehaviour;
 import org.javabip.exceptions.BIPException;
+import org.javabip.verification.report.ComponentResult;
+import org.javabip.verification.report.VerCorsReportParser;
+import org.json.simple.parser.ParseException;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * Parses the component specification to create a behaviour instance. The behaviour is specified either via annotations
@@ -52,9 +58,21 @@ public abstract class SpecificationParser implements ComponentProvider {
         this.componentClass = bipComponent.getClass();
 
         if (useAnnotationSpec) {
-            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this);
+            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this, false);
         } else {
-            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this);
+            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this, false);
+        }
+
+    }
+
+    public SpecificationParser(Object bipComponent, boolean useAnnotationSpec, boolean useRuntimeVerification) throws BIPException {
+        this.bipComponent = bipComponent;
+        this.componentClass = bipComponent.getClass();
+
+        if (useAnnotationSpec) {
+            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this, useRuntimeVerification);
+        } else {
+            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this, false);
         }
 
     }
@@ -128,23 +146,40 @@ public abstract class SpecificationParser implements ComponentProvider {
             throw new BIPException("Port information for the BIP component is not specified.");
         }
 
-        Invariant invariant = componentClass.getAnnotation(Invariant.class);
-        if (invariant != null){
-            builder.buildInvariant(invariant.value());
+        //part related to using vercors parser results
+        VerCorsReportParser vp = new VerCorsReportParser();
+        ArrayList<ComponentResult> verificationResults = new ArrayList<>();
+        try {
+            verificationResults.addAll(vp.parseVerCorsResults());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
         }
 
-        StatePredicates statePredicates = componentClass.getAnnotation(StatePredicates.class);
-        if (statePredicates != null){
-            for (StatePredicate statePredicate : statePredicates.value()){
-                builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
+        Optional<ComponentResult> componentVerificationResultsOptional = verificationResults.stream().filter(it -> it.getComponentName().equals(componentClass.getName())).findFirst();
+        if (componentVerificationResultsOptional.isPresent()){
+            ComponentResult componentResult = componentVerificationResultsOptional.get();
+            componentResult.getConstructorResults().getComponentInvariant();
 
+            Invariant invariant = componentClass.getAnnotation(Invariant.class);
+            if (invariant != null){
+                builder.buildComponentInvariant(invariant.value());
             }
-            //builder.buildStatePredicate(statePredicate.expr(), behaviour.getCurrentState());
-        }
 
-        StatePredicate statePredicate = componentClass.getAnnotation(StatePredicate.class);
-        if (statePredicate != null){
-            builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
+            StatePredicates statePredicates = componentClass.getAnnotation(StatePredicates.class);
+            if (statePredicates != null){
+                for (StatePredicate statePredicate : statePredicates.value()){
+                    builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
+
+                }
+                //builder.buildStatePredicate(statePredicate.expr(), behaviour.getCurrentState());
+            }
+
+            StatePredicate statePredicate = componentClass.getAnnotation(StatePredicate.class);
+            if (statePredicate != null){
+                builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
+            }
         }
 
         // get transitions & guards & data
@@ -195,9 +230,6 @@ public abstract class SpecificationParser implements ComponentProvider {
                 }
 
 				else if (annotation instanceof Pure) {
-					//throw new UnsupportedOperationException();
-				}
-				else if (annotation instanceof StatePredicate) {
 					//throw new UnsupportedOperationException();
 				}
             }

@@ -32,18 +32,18 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 	String id;
 
-	private BIPEngine engine;
+	BIPEngine engine;
 
-	private ArrayList<String> notifiers = new ArrayList<String>();
+	ArrayList<String> notifiers = new ArrayList<String>();
 
-	private ArrayList<Map<String, Object>> notifiersData = new ArrayList<Map<String, Object>>();
+	ArrayList<Map<String, Object>> notifiersData = new ArrayList<Map<String, Object>>();
 
 	protected boolean registered = false;
 
 	protected static final Logger logger = LogManager.getLogger();
 	//private Logger logger = LoggerFactory.getLogger(ExecutorKernel.class);
 
-	private Map<String, Object> dataEvaluation = new Hashtable<String, Object>();
+	Map<String, Object> dataEvaluation = new Hashtable<String, Object>();
 
 	boolean waitingForSpontaneous = false;
 
@@ -60,12 +60,12 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	 * @throws BIPException
 	 */
 	public ExecutorKernel(Object bipComponent, String id) throws BIPException {
-		this(bipComponent, id, true);
+		this( bipComponent, id, true);
 	}
 
 	/**
 	 * Creates a new executor instance.
-	 * 
+	 *
 	 * @param bipComponent
 	 *            the BIP Component to which the executor corresponds
 	 * @param id
@@ -77,6 +77,13 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	public ExecutorKernel(Object bipComponent, String id, boolean useSpec) throws BIPException {
 		super(bipComponent, useSpec);
 		this.id = id;
+	}
+
+	/*
+	* dirty hack because ExecutorKernelRV does not allow calling SpecificationParser directly
+	 */
+	public ExecutorKernel(Object bipComponent, boolean useSpec, boolean useRuntimeVerification) {
+		super(bipComponent, useSpec, useRuntimeVerification);
 	}
 
 	/*
@@ -115,7 +122,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	}
 
 	// Computed in guardToValue, used for checks in execute.
-	private Map<String, Boolean> guardToValue;
+	Map<String, Boolean> guardToValue;
 
 	/**
 	 * 
@@ -135,8 +142,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 		guardToValue = behaviour.computeGuardsWithoutData(behaviour.getCurrentState());
 
 		//check invariant before a transition
-		logger.debug("Invariant check at the beginning of each step {}", id);
-		behaviour.checkInvariant();
+		//logger.debug("Invariant check at the beginning of each step {}", id);
+		//behaviour.checkInvariant();
 
 		// we have to compute this in order to be able to raise an exception
 		boolean existInternalTransition = behaviour.existEnabledInternal(guardToValue);
@@ -155,8 +162,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 			logger.debug("Finishing current step that has executed an internal transition for component {}", id);
 
 			//check invariant after transition
-			logger.debug("Invariant check after an internal transition {}", id);
-			behaviour.checkInvariant();
+			//logger.debug("Invariant check after an internal transition {}", id);
+			//behaviour.checkInvariant();
 
 			return;
 		}
@@ -193,8 +200,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 							id);
 
 					//check invariant after transition
-					System.out.println("Invariant check after a spontaneous transition.");
-					behaviour.checkInvariant();
+					//System.out.println("Invariant check after a spontaneous transition.");
+					//behaviour.checkInvariant();
 
 					return;
 				}
