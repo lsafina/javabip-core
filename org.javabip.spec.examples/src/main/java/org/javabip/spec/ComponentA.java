@@ -18,17 +18,11 @@
  */
 package org.javabip.spec;
 
-import org.javabip.annotations.ComponentType;
-import org.javabip.annotations.Data;
-import org.javabip.annotations.Guard;
-import org.javabip.annotations.Port;
-import org.javabip.annotations.Ports;
-import org.javabip.annotations.Transition;
+import jakarta.annotation.security.PermitAll;
+import org.javabip.annotations.*;
 import org.javabip.api.PortType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.security.PermitAll;
 
 // Used in DataAvailabilityTest
 

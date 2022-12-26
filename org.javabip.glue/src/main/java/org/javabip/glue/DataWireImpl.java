@@ -18,10 +18,9 @@
  */
 package org.javabip.glue;
 
+import jakarta.xml.bind.annotation.XmlElement;
 import org.javabip.api.DataWire;
 import org.javabip.api.PortBase;
-
-import javax.xml.bind.annotation.XmlElement;
 
 /**
  * Class implementing the data wire functionality. Data wires are sued to specify the data connections between different
