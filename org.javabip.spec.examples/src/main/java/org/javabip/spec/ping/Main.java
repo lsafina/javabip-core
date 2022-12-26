@@ -33,6 +33,6 @@ public class Main {
 
         engine.stop();
         engineFactory.destroy(engine);
-        system.shutdown();
+        system.terminate();
     }
 }
