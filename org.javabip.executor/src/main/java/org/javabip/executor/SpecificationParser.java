@@ -51,7 +51,6 @@ public abstract class SpecificationParser implements ComponentProvider {
      *
      * @param bipComponent      the BIP component specification to parse
      * @param useAnnotationSpec true, if the annotations are used; false, if the behaviour is specified programmatically
-     * @throws BIPException
      */
     public SpecificationParser(Object bipComponent, boolean useAnnotationSpec) throws BIPException {
         this.bipComponent = bipComponent;
@@ -94,7 +93,7 @@ public abstract class SpecificationParser implements ComponentProvider {
                                 + "annotated with @ExecutableBehaviour should have a return type BehaviourBuilder");
                     }
                     try {
-                        if (method.getParameterTypes() != null && method.getParameterTypes().length != 0) {
+                        if (method.getParameterTypes().length != 0) {
                             throw new BIPException("The method " + method.getName()
                                     + " for getting executable behaviour for component "
                                     + bipComponent.getClass().getName() + "must have no arguments.");
@@ -122,7 +121,7 @@ public abstract class SpecificationParser implements ComponentProvider {
 
         Annotation classAnnotation = componentClass.getAnnotation(ComponentType.class);
         // get component name and type
-        if (classAnnotation instanceof ComponentType) {
+        if (classAnnotation != null) {
             ComponentType componentTypeAnnotation = (ComponentType) classAnnotation;
             builder.setComponentType(componentTypeAnnotation.name());
             specType = componentTypeAnnotation.name();
@@ -133,13 +132,13 @@ public abstract class SpecificationParser implements ComponentProvider {
 
         // get ports
         classAnnotation = componentClass.getAnnotation(Ports.class);
-        if (classAnnotation instanceof Ports) {
+        if (classAnnotation != null) {
             Ports ports = (Ports) classAnnotation;
             org.javabip.annotations.Port[] portArray = ports.value();
             for (org.javabip.annotations.Port bipPortAnnotation : portArray) {
 
-                if (bipPortAnnotation instanceof org.javabip.annotations.Port)
-                    addPort((org.javabip.annotations.Port) bipPortAnnotation, specType, builder);
+                if (bipPortAnnotation != null)
+                    addPort(bipPortAnnotation, specType, builder);
 
             }
         } else {
@@ -151,9 +150,7 @@ public abstract class SpecificationParser implements ComponentProvider {
         ArrayList<ComponentResult> verificationResults = new ArrayList<>();
         try {
             verificationResults.addAll(vp.parseVerCorsResults());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
+        } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
 

@@ -121,11 +121,8 @@ public class BehaviourBuilder {
             data.computeAllowedPort(allEnforceablePorts);
         }
 
-        if (useRuntimeVerification)
-            return new BehaviourImplRV(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
-                    states, guards.values(), dataOut, dataOutName, component, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap);
-        else
-            return new BehaviourImpl(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
+
+        return new BehaviourImpl(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
                 states, guards.values(), dataOut, dataOutName, component /*, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap*/);
 
     }
