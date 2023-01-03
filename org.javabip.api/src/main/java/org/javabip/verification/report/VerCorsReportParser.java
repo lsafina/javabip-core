@@ -1,6 +1,7 @@
 package org.javabip.verification.report;
 
-import org.json.JSONException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -10,14 +11,17 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Set;
 
 public class VerCorsReportParser {
+    protected static final Logger logger = LogManager.getLogger();
     //json consts
     final String STATE_INVARIANT = "stateInvariant";
     final String COMPONENT_INVARIANT = "componentInvariant";
-    final String POST_CONDITION = "postCondition";
-    final String CONSTRUCTOR = "<constructor>";
+    final String PRE_CONDITION = "precondition";
+    final String POST_CONDITION = "postcondition";
+    final String CONSTRUCTOR = "constructor";
     final String TRANSITIONS = "transitions";
     final String PROVEN = "proven";
     final String NOT_PROVEN = "not proven";
@@ -28,25 +32,20 @@ public class VerCorsReportParser {
     final String GUARD = "guard";
     final String RESULTS = "results";
 
-    final String FILE_PATH = "/Users/lsafina/Projects/javabip-core/org.javabip.api/src/main/java/org/javabip/verification/visitors/json.txt";
-
-    public static void main(String[] args) throws JSONException, IOException, ParseException {
-        VerCorsReportParser a = new VerCorsReportParser();
-        ArrayList<ComponentResult> componentResults = a.parseVerCorsResults();
-        System.out.printf("1");
-    }
+    final String FILE_PATH = "../casino.json";
 
     public ArrayList<ComponentResult> parseVerCorsResults() throws IOException, ParseException {
         JSONParser parser = new JSONParser();
 
         try {
             JSONObject jsonObject = (JSONObject) parser.parse(new FileReader(FILE_PATH));
-            Set componentSet = jsonObject.keySet();
+            Set componentsSet = jsonObject.keySet();
             ArrayList<ComponentResult> componentResults = new ArrayList<>();
 
-            for (Object cn : componentSet) {
-                String componentName = cn.toString();
-                JSONObject componentInvariants = (JSONObject) jsonObject.get(cn);
+            for (Object component : componentsSet) {
+                Object[] componentNameSplit = Arrays.stream(component.toString().split("\\.")).toArray();
+                String componentName = componentNameSplit[componentNameSplit.length-1].toString();
+                JSONObject componentInvariants = (JSONObject) jsonObject.get(component);
 
                 //collect constructor results
                 JSONObject constructorInvariants = (JSONObject) componentInvariants.get(CONSTRUCTOR);
@@ -64,6 +63,7 @@ public class VerCorsReportParser {
                     JSONObject results = (JSONObject) transaction.get(RESULTS);
                     Boolean transactionInvariantResult = parseInvariantResult(String.valueOf(results.get(COMPONENT_INVARIANT)));
                     Boolean transactionStateInvariantResult = parseInvariantResult(String.valueOf(results.get(STATE_INVARIANT)));
+                    Boolean transactionPreConditionResult = parseInvariantResult(String.valueOf(results.get(PRE_CONDITION)));
                     Boolean transactionPostConditionResult = parseInvariantResult(String.valueOf(results.get(POST_CONDITION)));
 
                     //collect transaction data
@@ -75,7 +75,8 @@ public class VerCorsReportParser {
                                     String.valueOf(data.get(NAME)),
                                     String.valueOf(data.get(SOURCE)),
                                     String.valueOf(data.get(TARGET)),
-                                    guard == null ? null : guard.toString(),
+                                    guard == null ? "" : guard.toString(),
+                                    transactionPreConditionResult,
                                     transactionPostConditionResult,
                                     transactionStateInvariantResult,
                                     transactionInvariantResult
@@ -94,11 +95,11 @@ public class VerCorsReportParser {
             return componentResults;
 
         } catch (FileNotFoundException e) {
-            //do smart stuff
-            throw e;
-        } catch (ParseException e) {
-            //do smart stuff
-            throw e;
+            logger.error("VerCors report was not found.");
+            return new ArrayList<>();
+        } catch (ParseException e){
+            logger.error("VerCors report was not parsed correctly and will be not used for runtime verification");
+            return new ArrayList<>();
         }
     }
 

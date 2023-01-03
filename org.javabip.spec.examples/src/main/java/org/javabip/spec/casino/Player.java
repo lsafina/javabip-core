@@ -6,6 +6,8 @@ import org.javabip.api.PortType;
 import static org.javabip.spec.casino.Coin.HEADS;
 import static org.javabip.spec.casino.Coin.TAILS;
 import static org.javabip.spec.casino.Constants.*;
+import static org.javabip.spec.demo.Constants.BET_PREPARED;
+
 @Ports({
         @Port(name = PREPARE_BET, type = PortType.enforceable),
         @Port(name = PLACE_BET, type = PortType.enforceable),
@@ -13,7 +15,8 @@ import static org.javabip.spec.casino.Constants.*;
 })
 
 @ComponentType(initial = GAME_AVAILABLE, name = PLAYER_SPEC)
-@Invariant("bet <= purse")
+@Invariant("purse >= 0")
+@StatePredicate(state = BET_PREPARED, expr = "guess != null && bet >= 0")
 public class Player {
     final Integer id;
     Integer bet;

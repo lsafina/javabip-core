@@ -7,6 +7,9 @@ import org.javabip.api.PortType;
 import static org.javabip.spec.casino.Coin.HEADS;
 import static org.javabip.spec.casino.Coin.TAILS;
 import static org.javabip.spec.casino.Constants.*;
+import static org.javabip.spec.demo.Constants.BET_PLACED;
+import static org.javabip.spec.demo.Constants.GAME_AVAILABLE;
+import static org.javabip.spec.demo.Constants.IDLE;
 
 @Ports({
         @Port(name = ADD_TO_POT, type = PortType.enforceable),
@@ -20,8 +23,8 @@ import static org.javabip.spec.casino.Constants.*;
 @ComponentType(initial = IDLE, name = CASINO_SPEC)
 @Invariant("bet >= 0 && pot >= bet")
 @StatePredicates({
-        @StatePredicate(state = IDLE, expr = "false"),
-        @StatePredicate(state = GAME_AVAILABLE, expr = "true"),
+        @StatePredicate(state = IDLE, expr = "bet == 0"),
+        @StatePredicate(state = GAME_AVAILABLE, expr = "bet == 0"),
         @StatePredicate(state = BET_PLACED, expr = "guess != null")
 })
 public class Casino {

@@ -16,7 +16,7 @@ public class Main {
         BIPGlue glue = new TwoSynchronGlueBuilder() {
             @Override
             public void configure() {
-                synchron(PingUserSpec.class, PING).to(PingCmdSpec.class, PING);
+                synchron(PingUserSpec.class, PING).to(PingUserSpec.class, PING);
                 synchron(PingUserSpec.class, PING).to(PingCmdSpec.class, PONG);
                 data(PingUserSpec.class, OUTGOING_TIME).to(PingCmdSpec.class, INCOMING_TIME);
             }

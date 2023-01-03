@@ -1,22 +1,26 @@
 package org.javabip.verification.report;
 
+import org.javabip.annotations.Transition;
+
 public class TransactionReport {
     private String name;
     private String source;
     private String target;
     private String guard;
 
+    private Boolean preCondition;
     private Boolean postCondition;
     private Boolean statePredicate;
     private Boolean componentInvariant;
 
     //public TransactionReport(){}
 
-    public TransactionReport(String name, String source, String target, String guard, Boolean postCondition, Boolean statePredicate, Boolean componentInvariant) {
+    public TransactionReport(String name, String source, String target, String guard, Boolean preCondition, Boolean postCondition, Boolean statePredicate, Boolean componentInvariant) {
         this.name = name;
         this.source = source;
         this.target = target;
         this.guard = guard;
+        this.preCondition = preCondition;
         this.postCondition = postCondition;
         this.statePredicate = statePredicate;
         this.componentInvariant = componentInvariant;
@@ -54,6 +58,10 @@ public class TransactionReport {
         this.guard = guard;
     }
 
+    public Boolean getPreCondition() {
+        return preCondition;
+    }
+
     public Boolean getPostCondition() {
         return postCondition;
     }
@@ -76,5 +84,12 @@ public class TransactionReport {
 
     public void setComponentInvariant(Boolean componentInvariant) {
         this.componentInvariant = componentInvariant;
+    }
+
+    public boolean equalsTransition(Transition transition){
+        if (!transition.name().equals(this.name)) return false;
+        if (!transition.source().equals(this.source)) return false;
+        if (!transition.target().equals(this.target)) return false;
+        return (transition.guard().equals(this.guard));
     }
 }

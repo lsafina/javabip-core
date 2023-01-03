@@ -5,6 +5,8 @@ import org.javabip.api.DataOut;
 import org.javabip.api.PortType;
 
 import static org.javabip.spec.casino.Constants.*;
+import static org.javabip.spec.demo.Constants.PUT_FUNDS;
+import static org.javabip.spec.demo.Constants.WITHDRAW_FUNDS;
 
 
 @Ports({
@@ -17,8 +19,11 @@ import static org.javabip.spec.casino.Constants.*;
 })
 
 @ComponentType(initial = WORKING, name = OPERATOR_SPEC)
-@Invariant("pot >= 0")
-@StatePredicate(state = IDLE, expr = "pot == 0")
+@Invariant("pot >= 0 && wallet >= 0")
+@StatePredicates({
+        @StatePredicate(state = PUT_FUNDS, expr = "amountToMove >= 0"),
+        @StatePredicate(state = WITHDRAW_FUNDS, expr = "0 <= amountToMove && amountToMove <= pot")
+})
 public class Operator {
     final Integer id;
     int wallet;
