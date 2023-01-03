@@ -118,6 +118,7 @@ public abstract class SpecificationParser implements ComponentProvider {
     }
 
     private BehaviourBuilder parseAnnotations(Class<?> componentClass) throws BIPException {
+
         BehaviourBuilder builder = new BehaviourBuilder(bipComponent);
         String specType = "";
         String initialState;
@@ -173,7 +174,7 @@ public abstract class SpecificationParser implements ComponentProvider {
         ComponentResult componentResult = null;
         //if verification report is present we check each predicate result and build/not build the corresponding predicate depending if the result is false/true
         if (!verificationResults.isEmpty()) {
-            Optional<ComponentResult> componentResultOptional = verificationResults.stream().filter(it -> it.getComponentName().equals(componentClass.getName())).findFirst();
+            Optional<ComponentResult> componentResultOptional = verificationResults.stream().filter(it -> it.getComponentName().equals(componentClass.getSimpleName())).findFirst();
             if (componentResultOptional.isPresent()) {
                 usingVRP = true;
                 componentResult = componentResultOptional.get();

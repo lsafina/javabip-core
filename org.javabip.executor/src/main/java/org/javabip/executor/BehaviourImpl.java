@@ -730,7 +730,7 @@ class BehaviourImpl implements ExecutableBehaviour {
                 try {
                     Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent), invariant.expression());
                     if ( !result.getKey()) {
-                        logger.error("Invariant violation: " + result.getValue());
+                        logger.error(componentClass.getSimpleName() + ": Invariant violation: " + result.getValue());
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -743,13 +743,14 @@ class BehaviourImpl implements ExecutableBehaviour {
     @Override
     public Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre) {
         InvariantImpl condition;
-        String message;
+        StringBuilder message = new StringBuilder();
+        message.append(componentClass.getSimpleName());
         if (pre) {
             condition = transitionToPreConditionMap.get((TransitionImpl) transition);
-            message = "Pre-condition violation: ";
+            message.append(": Pre-condition violation: ");
         } else {
             condition = transitionToPostConditionMap.get((TransitionImpl) transition);
-            message = "Post-condition violation: ";
+            message.append(": Post-condition violation: ");
         }
 
         if (condition != null) {
@@ -757,7 +758,14 @@ class BehaviourImpl implements ExecutableBehaviour {
                 try {
                     Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent), condition.expression());
                     if (!result.getKey()) {
-                        logger.error(message + result.getValue());
+                        message.append(result.getValue())
+                                .append("\n for the transition: ")
+                                .append(transitionPrintableFormat((ExecutableTransitionImpl) transition))
+                                .append("\n of method: ")
+                                .append(getTransitionMethodName((ExecutableTransitionImpl) transition));
+
+
+                        logger.error(message.toString());
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -776,7 +784,7 @@ class BehaviourImpl implements ExecutableBehaviour {
                 try {
                     Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent), statePredicate.expression());
                     if (!result.getKey()) {
-                        logger.error("State predicate violation: " + result.getValue() + ", for the state: " + currentState);
+                        logger.error(componentClass.getSimpleName() + ": State predicate violation: " + result.getValue() + "\n for the state: " + currentState);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -787,6 +795,30 @@ class BehaviourImpl implements ExecutableBehaviour {
         return new Pair<>(true, "");
     }
 
+    String transitionPrintableFormat(ExecutableTransitionImpl transition){
+        String g = transition.guard;
+        String r = transition.pre;
+        String e = transition.post;
+
+        StringBuilder sb = new StringBuilder();
+        sb
+                .append("(name=")
+                .append(transition.name)
+                .append(", source=")
+                .append(transition.source)
+                .append( ", target=")
+                .append(transition.target)
+                .append(g.equals("")? "" : ", guard=" + g )
+                .append(r.equals("")? "" : ", requires=" + r)
+                .append(e.equals("")? "" : ", ensures=" + e)
+                .append(")");
+
+        return sb.toString();
+    }
+
+    String getTransitionMethodName(ExecutableTransitionImpl transition){
+        return transition.method.getName();
+    }
 
     // ****************************** End of Runtime Verification *******************************************
 
