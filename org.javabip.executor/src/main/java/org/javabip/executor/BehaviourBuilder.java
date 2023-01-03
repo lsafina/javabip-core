@@ -82,7 +82,7 @@ public class BehaviourBuilder {
      * @return a new behaviour instance
      * @throws BIPException
      */
-    public ExecutableBehaviour build(ComponentProvider provider, boolean useRuntimeVerification) throws BIPException {
+    public ExecutableBehaviour build(ComponentProvider provider) throws BIPException {
         if (componentType == null || componentType.isEmpty()) {
             throw new NullPointerException("Component type for object " + component + " cannot be null or empty.");
         }
@@ -123,7 +123,7 @@ public class BehaviourBuilder {
 
 
         return new BehaviourImpl(componentType, currentState, transformIntoExecutableTransition(), componentPorts,
-                states, guards.values(), dataOut, dataOutName, component /*, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap*/);
+                states, guards.values(), dataOut, dataOutName, component, componentInvariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap);
 
     }
 

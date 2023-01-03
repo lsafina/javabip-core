@@ -18,6 +18,7 @@
  */
 package org.javabip.executor;
 
+import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javabip.api.*;
@@ -99,6 +100,11 @@ class BehaviourImpl implements ExecutableBehaviour {
     private Map<String, List<Port>> dataFromGuardsToPorts;
     private Map<String, List<Port>> portsNeedingData;
 
+    private InvariantImpl invariant;
+    private HashMap<TransitionImpl, InvariantImpl> transitionToPreConditionMap;
+    private HashMap<TransitionImpl, InvariantImpl> transitionToPostConditionMap;
+    private HashMap<String, InvariantImpl> stateToPredicateMap;
+
     private Object bipComponent;
     private Class<?> componentClass;
 
@@ -118,10 +124,14 @@ class BehaviourImpl implements ExecutableBehaviour {
      * @param states
      * @param guards
      * @param component
+     * @param invariant
+     * @param transitionToPreConditionMap
+     * @param transitionToPostConditionMap
+     * @param stateToPredicateMap
      * @throws BIPException
      */
     public BehaviourImpl(String componentType, String currentState, ArrayList<ExecutableTransition> allTransitions,
-                         ArrayList<Port> allPorts, HashSet<String> states, Collection<Guard> guards, Object component)
+                         ArrayList<Port> allPorts, HashSet<String> states, Collection<Guard> guards, Object component, InvariantImpl invariant, HashMap<TransitionImpl, InvariantImpl> transitionToPreConditionMap, HashMap<TransitionImpl, InvariantImpl> transitionToPostConditionMap, HashMap<String, InvariantImpl> stateToPredicateMap)
             throws BIPException {
 
         this.componentType = componentType;
@@ -252,13 +262,13 @@ class BehaviourImpl implements ExecutableBehaviour {
 
         }
 
-        //this.invariant = invariant;
-        //this.transitionToPreConditionMap = transitionToPreConditionMap;
-        //this.transitionToPostConditionMap = transitionToPostConditionMap;
-        //this.stateToPredicateMap = stateToPredicateMap;
+        this.invariant = invariant;
+        this.transitionToPreConditionMap = transitionToPreConditionMap;
+        this.transitionToPostConditionMap = transitionToPostConditionMap;
+        this.stateToPredicateMap = stateToPredicateMap;
     }
 
-    void updatePortsNeedingData(Port port, Data<?> data) {
+    private void updatePortsNeedingData(Port port, Data<?> data) {
         if (!portsNeedingData.containsKey(data.name())) {
             ArrayList<Port> dataPorts = new ArrayList<Port>();
             dataPorts.add(port);
@@ -281,18 +291,18 @@ class BehaviourImpl implements ExecutableBehaviour {
      * @param guards
      * @param dataOut
      * @param component
-     * //@param invariant
-     * //@param transitionToPreConditionMap
-     * //@param transitionToPostConditionMap
-     * //@param stateToPredicateMap
+     * @param invariant
+     * @param transitionToPreConditionMap
+     * @param transitionToPostConditionMap
+     * @param stateToPredicateMap
      * @throws BIPException
      */
     public BehaviourImpl(String type, String currentState, ArrayList<ExecutableTransition> allTransitions,
                          ArrayList<Port> allPorts, HashSet<String> states, Collection<Guard> guards,
-                         ArrayList<DataOutImpl<?>> dataOut, Hashtable<String, MethodHandle> dataOutName, Object component)
+                         ArrayList<DataOutImpl<?>> dataOut, Hashtable<String, MethodHandle> dataOutName, Object component, InvariantImpl invariant, HashMap<TransitionImpl, InvariantImpl> transitionToPreConditionMap, HashMap<TransitionImpl, InvariantImpl> transitionToPostConditionMap, HashMap<String, InvariantImpl> stateToPredicateMap)
             throws BIPException {
 
-        this(type, currentState, allTransitions, allPorts, states, guards, component);
+        this(type, currentState, allTransitions, allPorts, states, guards, component, invariant, transitionToPreConditionMap, transitionToPostConditionMap, stateToPredicateMap);
 
         this.dataOut = dataOut;
         this.dataOutName = dataOutName;
@@ -306,7 +316,7 @@ class BehaviourImpl implements ExecutableBehaviour {
         return currentState;
     }
 
-    ExecutableTransition getTransition(String state, String transitionName) {
+    private ExecutableTransition getTransition(String state, String transitionName) {
         return nameToTransition.get(state).get(transitionName);
     }
 
@@ -558,6 +568,7 @@ class BehaviourImpl implements ExecutableBehaviour {
 
     // ******************************* End of enabledness ****************************************
     // ************************************ Execution ********************************************
+
     public void execute(String portID, Map<String, ?> data) throws BIPException {
         // this component does not take part in the interaction
 
@@ -565,9 +576,19 @@ class BehaviourImpl implements ExecutableBehaviour {
             return;
         }
 
+        //check state predicate;
+        checkStatePredicate(currentState);
+
         // getTransition works correctly with spontaneous as well, as it addresses the list of all transitions
         ExecutableTransition transition = getTransition(currentState, portID);
+
+        //checkTransitionPreCondition(transition);
+        checkTransitionCondition(transition, true);
+
         invokeMethod(transition, data);
+
+        //checkTransitionPostcondition(transition);
+        checkTransitionCondition(transition, false);
     }
 
     // ExecutorKernel, the owner of BehaviourImpl is checking the correctness of the execution.
@@ -581,7 +602,13 @@ class BehaviourImpl implements ExecutableBehaviour {
             throw new BIPException("The spontaneous transition for port " + portID + " cannot be null after inform");
         }
 
+        //checkTransitionPreCondition(transition);
+        checkTransitionCondition(transition, true);
+
         invokeMethod(transition);
+
+        //checkTransitionPostcondition(transition);
+        checkTransitionCondition(transition, false);
     }
 
     public void executeInternal(Map<String, Boolean> guardToValue) throws BIPException {
@@ -598,7 +625,7 @@ class BehaviourImpl implements ExecutableBehaviour {
 
     }
 
-    void invokeMethod(ExecutableTransition transition) {
+    private void invokeMethod(ExecutableTransition transition) {
         MethodHandle methodHandle;
         String errorMessage = "The following exception while executing " + transition.name() + " in component "
                 + this.componentType;
@@ -632,7 +659,7 @@ class BehaviourImpl implements ExecutableBehaviour {
         }
     }
 
-    void invokeMethod(ExecutableTransition transition, Map<String, ?> data) {
+    private void invokeMethod(ExecutableTransition transition, Map<String, ?> data) {
         java.lang.reflect.Method componentMethod;
         MethodHandle methodHandle;
         try {
@@ -693,4 +720,74 @@ class BehaviourImpl implements ExecutableBehaviour {
     }
 
     // ****************************** End of Execution *******************************************
+
+    // ****************************** Runtime Verification ***************************************
+
+    @Override
+    public Pair<Boolean, String> checkInvariant() {
+        if (invariant != null)
+            synchronized (this) {
+                try {
+                    Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent), invariant.expression());
+                    if ( !result.getKey()) {
+                        logger.error("Invariant violation: " + result.getValue());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        //if there is no invariant we just ignore this execution
+        return new Pair<>(true, "");
+    }
+
+    @Override
+    public Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre) {
+        InvariantImpl condition;
+        String message;
+        if (pre) {
+            condition = transitionToPreConditionMap.get((TransitionImpl) transition);
+            message = "Pre-condition violation: ";
+        } else {
+            condition = transitionToPostConditionMap.get((TransitionImpl) transition);
+            message = "Post-condition violation: ";
+        }
+
+        if (condition != null) {
+            synchronized (this) {
+                try {
+                    Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent), condition.expression());
+                    if (!result.getKey()) {
+                        logger.error(message + result.getValue());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        //if there is no conditions we just ignore this execution
+        return new Pair<>(true, "");
+    }
+
+    @Override
+    public Pair<Boolean, String> checkStatePredicate(String currentState) {
+        InvariantImpl statePredicate = stateToPredicateMap.get(currentState);
+        if (statePredicate != null) {
+            synchronized (this) {
+                try {
+                    Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent), statePredicate.expression());
+                    if (!result.getKey()) {
+                        logger.error("State predicate violation: " + result.getValue() + ", for the state: " + currentState);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        //if there is no state predicate for a state we just ignore this execution
+        return new Pair<>(true, "");
+    }
+
+
+    // ****************************** End of Runtime Verification *******************************************
+
 }

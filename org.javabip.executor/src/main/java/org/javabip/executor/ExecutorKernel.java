@@ -21,29 +21,29 @@ import java.util.*;
  * The Kernel Executor which performs the execution of the corresponding BIP Component via its Behaviour. It is not a
  * multi-thread safe executor kernel therefore it should never be directly used. It needs to be proxied to protect it
  * from multi-thread access by for example Akka actor approach.
- * 
+ *
  * At each execution cycle, the executor checks for the enabled internal, spontaneous and enforceable transition and
  * then either performs a transition or notifies the engine of the disabled ports.
- * 
+ *
  * @author Alina Zolotukhina
- * 
+ *
  */
 public class ExecutorKernel extends SpecificationParser implements OrchestratedExecutor, ComponentProvider {
 
 	String id;
 
-	BIPEngine engine;
+	private BIPEngine engine;
 
-	ArrayList<String> notifiers = new ArrayList<String>();
+	private ArrayList<String> notifiers = new ArrayList<String>();
 
-	ArrayList<Map<String, Object>> notifiersData = new ArrayList<Map<String, Object>>();
+	private ArrayList<Map<String, Object>> notifiersData = new ArrayList<Map<String, Object>>();
 
 	protected boolean registered = false;
 
 	protected static final Logger logger = LogManager.getLogger();
 	//private Logger logger = LoggerFactory.getLogger(ExecutorKernel.class);
 
-	Map<String, Object> dataEvaluation = new Hashtable<String, Object>();
+	private Map<String, Object> dataEvaluation = new Hashtable<String, Object>();
 
 	boolean waitingForSpontaneous = false;
 
@@ -52,7 +52,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	/**
 	 * By default, the Executor is created for a component with annotations. If you want to create the Executor for a
 	 * component with behaviour, use another constructor
-	 * 
+	 *
 	 * @param bipComponent
 	 *            the component to which the executor corresponds
 	 * @param id
@@ -60,7 +60,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	 * @throws BIPException
 	 */
 	public ExecutorKernel(Object bipComponent, String id) throws BIPException {
-		this( bipComponent, id, true);
+		this(bipComponent, id, true);
 	}
 
 	/**
@@ -77,13 +77,6 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	public ExecutorKernel(Object bipComponent, String id, boolean useSpec) throws BIPException {
 		super(bipComponent, useSpec);
 		this.id = id;
-	}
-
-	/*
-	* dirty hack because ExecutorKernelRV does not allow calling SpecificationParser directly
-	 */
-	public ExecutorKernel(Object bipComponent, boolean useSpec, boolean useRuntimeVerification) {
-		super(bipComponent, useSpec, useRuntimeVerification);
 	}
 
 	/*
@@ -122,12 +115,12 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 	}
 
 	// Computed in guardToValue, used for checks in execute.
-	Map<String, Boolean> guardToValue;
+	private Map<String, Boolean> guardToValue;
 
 	/**
-	 * 
+	 *
 	 * Defines one cycle step of the executor. If no engine is registered it will exit immediately.
-	 * 
+	 *
 	 * @return true if the next step can be immediately executed, false if a spontaneous event must happen to have
 	 *         reason to execute next step again.
 	 * @throws BIPException
@@ -142,8 +135,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 		guardToValue = behaviour.computeGuardsWithoutData(behaviour.getCurrentState());
 
 		//check invariant before a transition
-		//logger.debug("Invariant check at the beginning of each step {}", id);
-		//behaviour.checkInvariant();
+		logger.debug("Invariant check at the beginning of each step {}", id);
+		behaviour.checkInvariant();
 
 		// we have to compute this in order to be able to raise an exception
 		boolean existInternalTransition = behaviour.existEnabledInternal(guardToValue);
@@ -162,8 +155,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 			logger.debug("Finishing current step that has executed an internal transition for component {}", id);
 
 			//check invariant after transition
-			//logger.debug("Invariant check after an internal transition {}", id);
-			//behaviour.checkInvariant();
+			logger.debug("Invariant check after an internal transition {}", id);
+			behaviour.checkInvariant();
 
 			return;
 		}
@@ -200,8 +193,8 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 							id);
 
 					//check invariant after transition
-					//System.out.println("Invariant check after a spontaneous transition.");
-					//behaviour.checkInvariant();
+					System.out.println("Invariant check after a spontaneous transition.");
+					behaviour.checkInvariant();
 
 					return;
 				}
@@ -231,7 +224,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 		/*
 		 * existSpontaneous transition exists but spontaneous event has not happened yet, thus a follow step should be
-		 * postponed until any spontaneous event is received. 
+		 * postponed until any spontaneous event is received.
 		 * TODO: Tell the engine that I am waiting (send all disabled ports in the inform)
 		 */
 		if (existSpontaneousTransition) {

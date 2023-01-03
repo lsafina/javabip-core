@@ -20,6 +20,7 @@
 
 package org.javabip.api;
 
+import javafx.util.Pair;
 import org.javabip.exceptions.BIPException;
 
 import java.lang.invoke.MethodHandle;
@@ -172,9 +173,9 @@ public interface ExecutableBehaviour extends Behaviour {
 	 */
 	public Map<String, Boolean> computeGuardsWithoutData(String currentState);
 
-	//Pair<Boolean, String> checkInvariant() throws BIPException;
+	Pair<Boolean, String> checkInvariant() throws BIPException;
 
-	//Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre);
+	Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre);
 
-	//Pair<Boolean, String> checkStatePredicate(String currentState);
+	Pair<Boolean, String> checkStatePredicate(String currentState);
 }

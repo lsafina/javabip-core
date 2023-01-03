@@ -63,9 +63,9 @@ public abstract class SpecificationParser implements ComponentProvider {
         this.componentClass = bipComponent.getClass();
 
         if (useAnnotationSpec) {
-            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this, false);
+            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this);
         } else {
-            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this, false);
+            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this);
         }
 
     }
@@ -75,9 +75,9 @@ public abstract class SpecificationParser implements ComponentProvider {
         this.componentClass = bipComponent.getClass();
 
         if (useAnnotationSpec) {
-            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this, useRuntimeVerification);
+            this.behaviour = parseAnnotations(bipComponent.getClass()).build(this);
         } else {
-            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this, false);
+            this.behaviour = getExecutableBehaviour(bipComponent.getClass()).build(this);
         }
 
     }
