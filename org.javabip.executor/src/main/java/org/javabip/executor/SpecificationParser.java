@@ -25,13 +25,18 @@ import org.javabip.api.ComponentProvider;
 import org.javabip.api.ExecutableBehaviour;
 import org.javabip.exceptions.BIPException;
 import org.javabip.verification.report.ComponentResult;
+import org.javabip.verification.report.ConstructorReport;
+import org.javabip.verification.report.TransactionReport;
 import org.javabip.verification.report.VerCorsReportParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 
 /**
@@ -45,6 +50,7 @@ public abstract class SpecificationParser implements ComponentProvider {
     protected Object bipComponent;
     protected ExecutableBehaviour behaviour;
     protected Class<?> componentClass;
+    private Logger logger = LoggerFactory.getLogger(SpecificationParser.class);
 
     /**
      * Creates an instance of SpecificationParser
@@ -113,19 +119,17 @@ public abstract class SpecificationParser implements ComponentProvider {
 
     private BehaviourBuilder parseAnnotations(Class<?> componentClass) throws BIPException {
         BehaviourBuilder builder = new BehaviourBuilder(bipComponent);
-
         String specType = "";
-        // TODO: Add simple test that forgets the componentType annotation to see whether the
-        // Exception (else part) is thrown.
+        String initialState;
 
-
-        Annotation classAnnotation = componentClass.getAnnotation(ComponentType.class);
         // get component name and type
+        Annotation classAnnotation = componentClass.getAnnotation(ComponentType.class);
         if (classAnnotation != null) {
             ComponentType componentTypeAnnotation = (ComponentType) classAnnotation;
             builder.setComponentType(componentTypeAnnotation.name());
             specType = componentTypeAnnotation.name();
-            builder.setInitialState(componentTypeAnnotation.initial());
+            initialState = componentTypeAnnotation.initial();
+            builder.setInitialState(initialState);
         } else {
             throw new BIPException("ComponentType annotation is not specified.");
         }
@@ -145,6 +149,18 @@ public abstract class SpecificationParser implements ComponentProvider {
             throw new BIPException("Port information for the BIP component is not specified.");
         }
 
+        //create a list of space predicates annotations, can be empty
+        ArrayList<StatePredicate> statePredicatesList = new ArrayList<>();
+        StatePredicates statePredicates = componentClass.getAnnotation(StatePredicates.class);
+        if (statePredicates != null) {
+            statePredicatesList.addAll(Arrays.asList(statePredicates.value()));
+        }
+        StatePredicate statePredicate = componentClass.getAnnotation(StatePredicate.class);
+        if (statePredicate != null) {
+            statePredicatesList.add(statePredicate);
+        }
+
+
         //part related to using vercors parser results
         VerCorsReportParser vp = new VerCorsReportParser();
         ArrayList<ComponentResult> verificationResults = new ArrayList<>();
@@ -153,85 +169,122 @@ public abstract class SpecificationParser implements ComponentProvider {
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
-
-        Optional<ComponentResult> componentVerificationResultsOptional = verificationResults.stream().filter(it -> it.getComponentName().equals(componentClass.getName())).findFirst();
-        if (componentVerificationResultsOptional.isPresent()){
-            ComponentResult componentResult = componentVerificationResultsOptional.get();
-            componentResult.getConstructorResults().getComponentInvariant();
-
-            Invariant invariant = componentClass.getAnnotation(Invariant.class);
-            if (invariant != null){
-                builder.buildComponentInvariant(invariant.value());
-            }
-
-            StatePredicates statePredicates = componentClass.getAnnotation(StatePredicates.class);
-            if (statePredicates != null){
-                for (StatePredicate statePredicate : statePredicates.value()){
-                    builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
-
-                }
-                //builder.buildStatePredicate(statePredicate.expr(), behaviour.getCurrentState());
-            }
-
-            StatePredicate statePredicate = componentClass.getAnnotation(StatePredicate.class);
-            if (statePredicate != null){
-                builder.buildStatePredicate(statePredicate.expr(), statePredicate.state());
+        boolean usingVRP = false;
+        ComponentResult componentResult = null;
+        //if verification report is present we check each predicate result and build/not build the corresponding predicate depending if the result is false/true
+        if (!verificationResults.isEmpty()) {
+            Optional<ComponentResult> componentResultOptional = verificationResults.stream().filter(it -> it.getComponentName().equals(componentClass.getName())).findFirst();
+            if (componentResultOptional.isPresent()) {
+                usingVRP = true;
+                componentResult = componentResultOptional.get();
             }
         }
 
-        // get transitions & guards & data
+        //dealing with class invariant and state predicate
+        if (usingVRP) {
+            ConstructorReport constructorResults = componentResult.getConstructorResults();
+            Boolean componentInvariant = constructorResults.getComponentInvariant();
+            //see if class invariant needs to be checked
+            if (!componentInvariant) {
+                parseInvariantAnnotation(componentClass, builder);
+            }
+
+            //see if state invariant for the initial state need to be checked
+            Boolean statePredicateConstructorProven = constructorResults.getStatePredicate();
+            if (!statePredicateConstructorProven) {
+                Optional<StatePredicate> statePredicateConstructorOptional = statePredicatesList.stream().filter(e -> e.state().equals(initialState)).findFirst();
+                if (statePredicateConstructorOptional.isPresent()) {
+                    StatePredicate sp = statePredicateConstructorOptional.get();
+                    builder.buildStatePredicate(sp.expr(), sp.state());
+                } else {
+                    logger.info("VerCors report indicates that there is a state predicate that was not proven for the initial state, but JavaBip was not able to find this predicate");
+                }
+            }
+        } else {
+            //if we do not use vercors report, let's build all state predicates
+            parseInvariantAnnotation(componentClass, builder);
+            statePredicatesList.forEach(sp -> builder.buildStatePredicate(sp.expr(), sp.state()));
+        }
+
+        //dealing with methods
         Method[] componentMethods = componentClass.getMethods();
+        // get transitions & guards & data
         for (Method method : componentMethods) {
             Annotation[] annotations = method.getAnnotations();
             for (Annotation annotation : annotations) {
+
+                //create a list of transition annotations, can be empty
+                ArrayList<Transition> transitionList = new ArrayList<>();
                 if (annotation instanceof org.javabip.annotations.Transition) {
-
-                    addTransitionAndStates(method, (org.javabip.annotations.Transition) annotation, builder);
-
-                }
-				else if (annotation instanceof Transitions) {
+                    transitionList.add((Transition) annotation);
+                } else if (annotation instanceof Transitions) {
                     Transitions transitionsAnnotation = (Transitions) annotation;
-                    Annotation[] transitionAnnotations = transitionsAnnotation.value();
-                    for (Annotation bipTransitionAnnotation : transitionAnnotations) {
+                    transitionList.addAll(Arrays.asList(transitionsAnnotation.value()));
+                }
 
-						addTransitionAndStates(method, (org.javabip.annotations.Transition) bipTransitionAnnotation,
-                                builder);
+                //process transition(s)
+                if (!transitionList.isEmpty()) {
+                    for (Transition transition : transitionList) {
+                        if (usingVRP) {
+                            ArrayList<TransactionReport> transactionsReport = componentResult.getTransactionResults();
+                            Optional<TransactionReport> transactionReportOptional = transactionsReport.stream().filter(tr -> tr.equalsTransition(transition)).findFirst();
+                            if (transactionReportOptional.isEmpty()) {
+                                logger.info("JavaBip was not able to find any data in the parsed vercors report for this transition");
+                            } else {
+                                TransactionReport transactionReport = transactionReportOptional.get();
+
+                                //check invariant
+                                //TODO in fact, state invariant can be checked not only at every step but taking into account if it was proven or not for the transition
+
+                                //check state predicate
+                                if (!transactionReport.getStatePredicate()) {
+                                    Optional<StatePredicate> statePredicateTransitionOptional = statePredicatesList.stream().filter(st -> st.state().equals(transition.source())).findFirst();
+                                    if (statePredicateTransitionOptional.isEmpty()) {
+                                        logger.info("JavaBip was not able to parse a state predicate in the JavaBip specification");
+                                    } else {
+                                        StatePredicate sp = statePredicateTransitionOptional.get();
+                                        builder.buildStatePredicate(sp.expr(), sp.state());
+                                    }
+                                }
+
+                                //check pre and post conditions
+                                String requires = transactionReport.getPreCondition() ? "" : transition.requires();
+                                String ensures = transactionReport.getPostCondition() ? "" : transition.ensures();
+                                builder.addTransitionAndStates(transition.name(), transition.source(),
+                                        transition.target(), transition.guard(), requires, ensures, method);
+                            }
+                        } else {
+                            addTransitionAndStates(method, transition, builder);
+                        }
                     }
                 }
-				else if (annotation instanceof org.javabip.annotations.Guard) {
 
+                //process guard
+                else if (annotation instanceof org.javabip.annotations.Guard) {
                     addGuard(method, (org.javabip.annotations.Guard) annotation, builder);
 
                 }
-				else if (annotation instanceof Data) { // DATA OUT
 
+                //process data (out)
+                else if (annotation instanceof Data) {
                     addData(method, (Data) annotation, builder);
-
-                    // TODO DESIGN Do we really make it possible to specify Port(s) directly within the function?
-                }
-				else if (annotation instanceof Ports) {
-                    Ports portsAnnotation = (Ports) annotation;
-                    Annotation[] portAnnotations = portsAnnotation.value();
-                    for (Annotation bipPortAnnotation : portAnnotations) {
-
-                        if (bipPortAnnotation instanceof org.javabip.annotations.Port)
-                            addPort((org.javabip.annotations.Port) bipPortAnnotation, componentClass, builder);
-
-                    }
-
-                }
-				else if (annotation instanceof org.javabip.annotations.Port) {
-
-                    addPort((org.javabip.annotations.Port) annotation, componentClass, builder);
-
                 }
 
-				else if (annotation instanceof Pure) {
-					//throw new UnsupportedOperationException();
-				}
+                //process pure
+                else if (annotation instanceof Pure) {
+                    //throw new UnsupportedOperationException();
+                }
             }
         }
+
         return builder;
+    }
+
+    private void parseInvariantAnnotation(Class<?> componentClass, BehaviourBuilder builder) {
+        Invariant invariant = componentClass.getAnnotation(Invariant.class);
+        if (invariant != null) {
+            builder.buildComponentInvariant(invariant.value());
+        }
     }
 
     private void addGuard(Method method, org.javabip.annotations.Guard annotation, BehaviourBuilder builder)
@@ -255,12 +308,13 @@ public abstract class SpecificationParser implements ComponentProvider {
     private void addTransitionAndStates(Method method, org.javabip.annotations.Transition transitionAnnotation,
                                         BehaviourBuilder builder) {
 
-		builder.addTransitionAndStates(transitionAnnotation.name(), transitionAnnotation.source(),
+        builder.addTransitionAndStates(transitionAnnotation.name(), transitionAnnotation.source(),
                 transitionAnnotation.target(), transitionAnnotation.guard(), transitionAnnotation.requires(), transitionAnnotation.ensures(), method);
 
     }
 
-    private void addPort(org.javabip.annotations.Port portAnnotation, Class<?> componentClass, BehaviourBuilder builder) {
+    private void addPort(org.javabip.annotations.Port portAnnotation, Class<?> componentClass, BehaviourBuilder
+            builder) {
 
         builder.addPort(portAnnotation.name(), portAnnotation.type(), componentClass);
 
