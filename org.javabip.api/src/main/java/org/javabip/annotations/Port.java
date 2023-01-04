@@ -20,10 +20,11 @@
 
 package org.javabip.annotations;
 
+import org.javabip.api.PortType;
+
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-
-import org.javabip.api.PortType;
 
 /**
  * It specifies the name and the type of the port.
@@ -31,6 +32,7 @@ import org.javabip.api.PortType;
  * @author Alina Zolotukhina
  */
 @Retention(RetentionPolicy.RUNTIME)
+@Repeatable(Ports.class)
 public @interface Port {
 
 	/**

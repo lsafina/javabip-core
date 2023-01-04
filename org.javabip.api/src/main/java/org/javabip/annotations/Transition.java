@@ -20,6 +20,7 @@
 
 package org.javabip.annotations;
 
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -29,6 +30,7 @@ import java.lang.annotation.RetentionPolicy;
  * @author Alina Zolotukhina
  */
 @Retention(RetentionPolicy.RUNTIME)
+@Repeatable(Transitions.class)
 public @interface Transition {
 
 	/**
