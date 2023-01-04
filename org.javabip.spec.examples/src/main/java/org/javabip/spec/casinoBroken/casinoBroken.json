@@ -141,7 +141,7 @@
           "name": "RECEIVE_BET",
           "source": "GAME_AVAILABLE",
           "target": "BET_PLACED",
-          "guard": "IS_NOT_OPERATOR & ALLOWABLE_BET"
+          "guard": "IS_NOT_OPERATOR && ALLOWABLE_BET"
         },
         "results": {
           "precondition": "proven",

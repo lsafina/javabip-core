@@ -39,6 +39,9 @@ public class VerCorsReportParser {
 
         try {
             JSONObject jsonObject = (JSONObject) parser.parse(new FileReader(FILE_PATH));
+            System.out.println("VERCORS PARSER: USING VERIFICATION REPORT");
+
+
             Set componentsSet = jsonObject.keySet();
             ArrayList<ComponentResult> componentResults = new ArrayList<>();
 
@@ -95,10 +98,10 @@ public class VerCorsReportParser {
             return componentResults;
 
         } catch (FileNotFoundException e) {
-            logger.info("VerCors report was not found.");
+            logger.error("VerCors report was not found.");
             return new ArrayList<>();
         } catch (ParseException e){
-            logger.info("VerCors report was not parsed correctly and will be not used for runtime verification");
+            logger.error("VerCors report was not parsed correctly and will be not used for runtime verification");
             return new ArrayList<>();
         }
     }

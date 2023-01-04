@@ -2,16 +2,12 @@ package org.javabip.spec.casinoBroken;
 
 import org.javabip.annotations.*;
 import org.javabip.api.PortType;
-
-import static org.javabip.spec.casinoBroken.Coin.HEADS;
-import static org.javabip.spec.casinoBroken.Coin.TAILS;
 import static org.javabip.spec.casinoBroken.Constants.*;
+import static org.javabip.spec.casinoBroken.Coin.*;
 
-@Ports({
-        @Port(name = PREPARE_BET, type = PortType.enforceable),
-        @Port(name = PLACE_BET, type = PortType.enforceable),
-        @Port(name = RECEIVE_MONEY, type = PortType.enforceable)
-})
+@Port(name = PREPARE_BET, type = PortType.enforceable)
+@Port(name = PLACE_BET, type = PortType.enforceable)
+@Port(name = RECEIVE_MONEY, type = PortType.enforceable)
 @ComponentType(initial = GAME_AVAILABLE, name = PLAYER_SPEC)
 @Invariant("purse >= 0")
 @StatePredicate(state = BET_PREPARED, expr = "guess != null && bet >= 0")

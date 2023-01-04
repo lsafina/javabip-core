@@ -2,7 +2,8 @@
 This version of the casino case study adjusts the contracts, by including wherever needed that the pot needs to be big enough. This fixes verification problems, at the cost of introducing a deadlock.
 
 TODO: The above explanation is not actually implemented here!!
-*/
+*//*
+
 
 package org.javabip.spec.casinoAdjusted;
 
@@ -19,7 +20,9 @@ public class Main {
         ActorSystem system = ActorSystem.create(ACTOR_SYSTEM);
         EngineFactory engineFactory = new EngineFactory(system);
 
-        BIPGlue glue = new /*@ vercorsBipJob @*/ TwoSynchronGlueBuilder() {
+        BIPGlue glue = new */
+/*@ vercorsBipJob @*//*
+ TwoSynchronGlueBuilder() {
             @Override
             public void configure() {
                 port(Operator.class, PREPARE_TO_ADD).requiresNothing();
@@ -82,3 +85,4 @@ public class Main {
         }
     }
 }
+*/
