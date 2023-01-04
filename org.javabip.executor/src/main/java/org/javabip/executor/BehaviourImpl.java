@@ -26,7 +26,6 @@ import org.javabip.exceptions.BIPException;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -727,17 +726,16 @@ class BehaviourImpl implements ExecutableBehaviour {
 
     // ****************************** Runtime Verification ***************************************
 
+    private final String RV_EXCEPTION = "Runtime Verification exception";
+
     @Override
     public Pair<Boolean, String> checkInvariant() {
         if (invariant != null)
             synchronized (this) {
-                try {
-                    Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent, null), invariant.expression());
-                    if (!result.getKey()) {
-                        logger.error(componentClass.getSimpleName() + ": Invariant violation: " + result.getValue());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent, null), invariant.expression());
+                if (!result.getKey()) {
+                    logger.error(componentClass.getSimpleName() + ": Invariant violation: " + result.getValue());
+                    throw new BIPException(RV_EXCEPTION);
                 }
             }
         //if there is no invariant we just ignore this execution
@@ -758,18 +756,16 @@ class BehaviourImpl implements ExecutableBehaviour {
 
         if (condition != null) {
             synchronized (this) {
-                try {
-                    Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent, data), condition.expression());
-                    if (!result.getKey()) {
-                        message.append(result.getValue())
-                                .append("\n for the transition: ")
-                                .append(transitionPrintableFormat((ExecutableTransitionImpl) transition))
-                                .append("\n of method: ")
-                                .append(getTransitionMethodName((ExecutableTransitionImpl) transition));
-                        logger.error(message.toString());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+
+                Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent, data), condition.expression());
+                if (!result.getKey()) {
+                    message.append(result.getValue())
+                            .append("\n for the transition: ")
+                            .append(transitionPrintableFormat((ExecutableTransitionImpl) transition))
+                            .append("\n of method: ")
+                            .append(getTransitionMethodName((ExecutableTransitionImpl) transition));
+                    logger.error(message.toString());
+                    throw new BIPException(RV_EXCEPTION);
                 }
             }
         }
@@ -782,13 +778,10 @@ class BehaviourImpl implements ExecutableBehaviour {
         InvariantImpl statePredicate = stateToPredicateMap.get(currentState);
         if (statePredicate != null) {
             synchronized (this) {
-                try {
-                    Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent, null), statePredicate.expression());
-                    if (!result.getKey()) {
-                        logger.error(componentClass.getSimpleName() + ": State predicate violation: " + result.getValue() + "\n for the state: " + currentState);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent, null), statePredicate.expression());
+                if (!result.getKey()) {
+                    logger.error(componentClass.getSimpleName() + ": State predicate violation: " + result.getValue() + "\n for the state: " + currentState);
+                    throw new BIPException(RV_EXCEPTION);
                 }
             }
         }
@@ -822,8 +815,6 @@ class BehaviourImpl implements ExecutableBehaviour {
     }
 
     HashMap<String, Object> fetchRuntimeValues(ExecutableTransition tr, Map<String, ?> data) {
-        ExecutableTransition transition = allTransitions.stream().filter(it -> it.equals(tr)).findFirst().get();
-        Parameter[] parameters = tr.method().getParameters();
         List<String> parameterNames = Arrays.stream(tr.method().getParameters()).map(it -> it.getName()).collect(Collectors.toList());
         ArrayList<DataImpl> dataRequired = new ArrayList<>();
         tr.dataRequired().forEach(d -> dataRequired.add((DataImpl) d));
@@ -833,7 +824,7 @@ class BehaviourImpl implements ExecutableBehaviour {
                 .collect(Collectors.toList());
 
         HashMap<String, Object> values = new HashMap<>();
-        zip.forEach( pair -> values.put(pair.getKey(), data.get(pair.getValue())));
+        zip.forEach(pair -> values.put(pair.getKey(), data.get(pair.getValue())));
         return values;
     }
 

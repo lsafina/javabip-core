@@ -32,7 +32,7 @@ public class VerCorsReportParser {
     final String GUARD = "guard";
     final String RESULTS = "results";
 
-    final String FILE_PATH = "../casino.json";
+    final String FILE_PATH = "../verificationReport.json";
 
     public ArrayList<ComponentResult> parseVerCorsResults() throws IOException, ParseException {
         JSONParser parser = new JSONParser();
