@@ -99,7 +99,7 @@
           "name": "REMOVE_FROM_POT",
           "source": "IDLE",
           "target": "IDLE",
-          "guard": "IS_OPERATOR & ENOUGH_FUNDS"
+          "guard": "IS_OPERATOR && ENOUGH_FUNDS"
         },
         "results": {
           "precondition": "proven",
@@ -113,7 +113,7 @@
           "name": "REMOVE_FROM_POT",
           "source": "GAME_AVAILABLE",
           "target": "GAME_AVAILABLE",
-          "guard": "IS_OPERATOR & ENOUGH_FUNDS"
+          "guard": "IS_OPERATOR && ENOUGH_FUNDS"
         },
         "results": {
           "precondition": "proven",
@@ -141,7 +141,7 @@
           "name": "RECEIVE_BET",
           "source": "GAME_AVAILABLE",
           "target": "BET_PLACED",
-          "guard": "IS_NOT_OPERATOR & ALLOWABLE_BET"
+          "guard": "IS_NOT_OPERATOR && ALLOWABLE_BET"
         },
         "results": {
           "precondition": "proven",
