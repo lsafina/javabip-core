@@ -273,8 +273,7 @@ public class ExecutorKernel extends SpecificationParser implements OrchestratedE
 
 				try {
 					if (!behaviour.checkEnabledness(portID, parameter).get(0)) {
-						throw new BIPException("Port " + portID
-								+ " that requires data is not enabled for the received data");
+						//throw new BIPException("Port " + portID+ " that requires data is not enabled for the received data");
 					}
 				} catch (Exception e) {
 					System.out.println("start" + LocalDateTime.now());
