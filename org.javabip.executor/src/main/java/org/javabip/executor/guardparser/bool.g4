@@ -25,8 +25,8 @@ import org.javabip.executor.GuardTreeNode;
 LPAREN : '(';
 RPAREN : ')';
 ID : ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'0'..'9'|'_')*;
-UNION : '|';
-INTERSECTION : '&'; 
+UNION : '||';
+INTERSECTION : '&&';
 NEGATION : '!';
 
 WS : [ \t\r\n]+ -> skip;
