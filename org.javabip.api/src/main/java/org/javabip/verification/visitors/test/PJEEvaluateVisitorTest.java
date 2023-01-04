@@ -2,12 +2,14 @@ package org.javabip.verification.visitors.test;
 
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.javabip.verification.ast.*;
+import org.javabip.verification.ast.ParsedJavaExpression;
 import org.javabip.verification.parser.JavaLexer;
 import org.javabip.verification.parser.JavaParser;
 import org.javabip.verification.visitors.ExpressionASTBuilder;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
 import org.junit.Test;
+
+import java.util.Collections;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,7 +48,7 @@ public class PJEEvaluateVisitorTest {
         }
 
         public Boolean evaluateInvariant() {
-            return (Boolean) parsedExpression.accept(new PJEEvaluateVisitor());
+            return (Boolean) parsedExpression.accept(new PJEEvaluateVisitor(Collections.emptyMap()));
         }
     }
 

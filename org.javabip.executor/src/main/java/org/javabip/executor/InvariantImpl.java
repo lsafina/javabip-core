@@ -24,6 +24,8 @@ import org.javabip.api.Invariant;
 import org.javabip.verification.ast.ParsedJavaExpression;
 import org.javabip.verification.visitors.PJEEvaluateVisitor;
 
+import java.util.Map;
+
 class InvariantImpl implements Invariant {
 	private final String expression;
 	private final ParsedJavaExpression parsedExpression;
@@ -41,7 +43,7 @@ class InvariantImpl implements Invariant {
 		return "Invariant=(" + expression() + ")";
 	}
 
-	public boolean evaluateInvariant( Class<?> componentClass, Object bipComponent ) {
-		return (Boolean) parsedExpression.accept(new PJEEvaluateVisitor());
+	public boolean evaluateInvariant(Class<?> componentClass, Object bipComponent, Map<String, ?> data) {
+		return (Boolean) parsedExpression.accept(new PJEEvaluateVisitor(data));
 	}
 }

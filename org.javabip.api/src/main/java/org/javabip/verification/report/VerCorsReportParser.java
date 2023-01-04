@@ -95,10 +95,10 @@ public class VerCorsReportParser {
             return componentResults;
 
         } catch (FileNotFoundException e) {
-            logger.error("VerCors report was not found.");
+            logger.info("VerCors report was not found.");
             return new ArrayList<>();
         } catch (ParseException e){
-            logger.error("VerCors report was not parsed correctly and will be not used for runtime verification");
+            logger.info("VerCors report was not parsed correctly and will be not used for runtime verification");
             return new ArrayList<>();
         }
     }

@@ -26,7 +26,10 @@ import org.javabip.exceptions.BIPException;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Implements the Behaviour and ExecutableBehaviour interfaces, providing the behaviour of the component together with
@@ -583,12 +586,13 @@ class BehaviourImpl implements ExecutableBehaviour {
         ExecutableTransition transition = getTransition(currentState, portID);
 
         //checkTransitionPreCondition(transition);
-        checkTransitionCondition(transition, true);
+        HashMap<String, Object> runtimeValues = fetchRuntimeValues(transition, data);
+        checkTransitionCondition(transition, runtimeValues, true);
 
         invokeMethod(transition, data);
 
         //checkTransitionPostcondition(transition);
-        checkTransitionCondition(transition, false);
+        checkTransitionCondition(transition, runtimeValues, false);
     }
 
     // ExecutorKernel, the owner of BehaviourImpl is checking the correctness of the execution.
@@ -603,12 +607,12 @@ class BehaviourImpl implements ExecutableBehaviour {
         }
 
         //checkTransitionPreCondition(transition);
-        checkTransitionCondition(transition, true);
+        checkTransitionCondition(transition, null, true);
 
         invokeMethod(transition);
 
         //checkTransitionPostcondition(transition);
-        checkTransitionCondition(transition, false);
+        checkTransitionCondition(transition, null, false);
     }
 
     public void executeInternal(Map<String, Boolean> guardToValue) throws BIPException {
@@ -728,8 +732,8 @@ class BehaviourImpl implements ExecutableBehaviour {
         if (invariant != null)
             synchronized (this) {
                 try {
-                    Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent), invariant.expression());
-                    if ( !result.getKey()) {
+                    Pair<Boolean, String> result = new Pair<>(invariant.evaluateInvariant(componentClass, bipComponent, null), invariant.expression());
+                    if (!result.getKey()) {
                         logger.error(componentClass.getSimpleName() + ": Invariant violation: " + result.getValue());
                     }
                 } catch (Exception e) {
@@ -740,8 +744,7 @@ class BehaviourImpl implements ExecutableBehaviour {
         return new Pair<>(true, "");
     }
 
-    @Override
-    public Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre) {
+    public Pair<Boolean, String> checkTransitionCondition(Object transition, Map<String, ?> data, Boolean pre) {
         InvariantImpl condition;
         StringBuilder message = new StringBuilder();
         message.append(componentClass.getSimpleName());
@@ -756,15 +759,13 @@ class BehaviourImpl implements ExecutableBehaviour {
         if (condition != null) {
             synchronized (this) {
                 try {
-                    Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent), condition.expression());
+                    Pair<Boolean, String> result = new Pair<>(condition.evaluateInvariant(componentClass, bipComponent, data), condition.expression());
                     if (!result.getKey()) {
                         message.append(result.getValue())
                                 .append("\n for the transition: ")
                                 .append(transitionPrintableFormat((ExecutableTransitionImpl) transition))
                                 .append("\n of method: ")
                                 .append(getTransitionMethodName((ExecutableTransitionImpl) transition));
-
-
                         logger.error(message.toString());
                     }
                 } catch (Exception e) {
@@ -782,7 +783,7 @@ class BehaviourImpl implements ExecutableBehaviour {
         if (statePredicate != null) {
             synchronized (this) {
                 try {
-                    Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent), statePredicate.expression());
+                    Pair<Boolean, String> result = new Pair<>(statePredicate.evaluateInvariant(componentClass, bipComponent, null), statePredicate.expression());
                     if (!result.getKey()) {
                         logger.error(componentClass.getSimpleName() + ": State predicate violation: " + result.getValue() + "\n for the state: " + currentState);
                     }
@@ -795,7 +796,7 @@ class BehaviourImpl implements ExecutableBehaviour {
         return new Pair<>(true, "");
     }
 
-    String transitionPrintableFormat(ExecutableTransitionImpl transition){
+    String transitionPrintableFormat(ExecutableTransitionImpl transition) {
         String g = transition.guard;
         String r = transition.pre;
         String e = transition.post;
@@ -806,18 +807,34 @@ class BehaviourImpl implements ExecutableBehaviour {
                 .append(transition.name)
                 .append(", source=")
                 .append(transition.source)
-                .append( ", target=")
+                .append(", target=")
                 .append(transition.target)
-                .append(g.equals("")? "" : ", guard=" + g )
-                .append(r.equals("")? "" : ", requires=" + r)
-                .append(e.equals("")? "" : ", ensures=" + e)
+                .append(g.equals("") ? "" : ", guard=" + g)
+                .append(r.equals("") ? "" : ", requires=" + r)
+                .append(e.equals("") ? "" : ", ensures=" + e)
                 .append(")");
 
         return sb.toString();
     }
 
-    String getTransitionMethodName(ExecutableTransitionImpl transition){
+    String getTransitionMethodName(ExecutableTransitionImpl transition) {
         return transition.method.getName();
+    }
+
+    HashMap<String, Object> fetchRuntimeValues(ExecutableTransition tr, Map<String, ?> data) {
+        ExecutableTransition transition = allTransitions.stream().filter(it -> it.equals(tr)).findFirst().get();
+        Parameter[] parameters = tr.method().getParameters();
+        List<String> parameterNames = Arrays.stream(tr.method().getParameters()).map(it -> it.getName()).collect(Collectors.toList());
+        ArrayList<DataImpl> dataRequired = new ArrayList<>();
+        tr.dataRequired().forEach(d -> dataRequired.add((DataImpl) d));
+
+        List<Map.Entry<String, String>> zip = IntStream.range(0, Math.min(parameterNames.size(), dataRequired.size()))
+                .mapToObj(i -> Map.entry(parameterNames.get(i), dataRequired.get(i).name))
+                .collect(Collectors.toList());
+
+        HashMap<String, Object> values = new HashMap<>();
+        zip.forEach( pair -> values.put(pair.getKey(), data.get(pair.getValue())));
+        return values;
     }
 
     // ****************************** End of Runtime Verification *******************************************

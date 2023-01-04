@@ -20,6 +20,8 @@
 
 package org.javabip.api;
 
+import java.util.Map;
+
 /**
  * It specifies the interface for class invariant
  */
@@ -30,5 +32,5 @@ public interface Invariant {
 	 */
 	String expression();
 
-	boolean evaluateInvariant(Class<?> componentClass, Object bipComponent);
+	boolean evaluateInvariant(Class<?> componentClass, Object bipComponent, Map<String, ?> data);
 }

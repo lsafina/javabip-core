@@ -6,6 +6,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class IdentifierExpression implements ParsedJavaExpression, AfterDotExpression, MethodCallBase {
@@ -47,6 +48,15 @@ public class IdentifierExpression implements ParsedJavaExpression, AfterDotExpre
 
     @Override
     public Object accept(PJEEvaluateVisitor v) {
+        Map<String, ?> data = v.getData();
+        try {
+            if (data.containsKey(identifierName)) {
+                return data.get(identifierName);
+            }
+        } catch (Exception e){
+            //TODO
+        }
+
         if (associatedField != null){
             associatedField.setAccessible(true);
             try {

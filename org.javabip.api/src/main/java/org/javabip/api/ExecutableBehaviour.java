@@ -175,7 +175,7 @@ public interface ExecutableBehaviour extends Behaviour {
 
 	Pair<Boolean, String> checkInvariant() throws BIPException;
 
-	Pair<Boolean, String> checkTransitionCondition(Object transition, Boolean pre);
+	Pair<Boolean, String> checkTransitionCondition(Object transition, Map<String, ?> data, Boolean pre);
 
 	Pair<Boolean, String> checkStatePredicate(String currentState);
 }

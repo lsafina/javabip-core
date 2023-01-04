@@ -2,7 +2,19 @@ package org.javabip.verification.visitors;
 
 import org.javabip.verification.ast.*;
 
+import java.util.Map;
+
 public class PJEEvaluateVisitor implements PJEVisitor<Object> {
+    private final Map<String, ?> data;
+
+    public PJEEvaluateVisitor(Map<String, ?> data) {
+        this.data = data;
+    }
+
+    public Map<String, ?> getData() {
+        return data;
+    }
+
     public Boolean visit(ArrayExpression e){
         return false;
     }
