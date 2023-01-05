@@ -77,10 +77,11 @@
 			<groupId>com.typesafe.akka</groupId>
 			<artifactId>akka-actor_2.11</artifactId>
 		</dependency>
-		<dependency>
+		<!-- removed while the main of the casinos are not used anyway -->
+		<!-- <dependency>
 			<groupId>org.javabip</groupId>
 			<artifactId>org.javabip.engine.factory</artifactId>
-		</dependency>
+		</dependency> -->
 
 	</dependencies>
 

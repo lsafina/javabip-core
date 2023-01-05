@@ -32,7 +32,7 @@ public class VerCorsReportParser {
     final String GUARD = "guard";
     final String RESULTS = "results";
 
-    final String FILE_PATH = "../verificationReport.json";
+    final String FILE_PATH = "verificationReport.json";
 
     public ArrayList<ComponentResult> parseVerCorsResults() throws IOException, ParseException {
         JSONParser parser = new JSONParser();
@@ -98,7 +98,7 @@ public class VerCorsReportParser {
             return componentResults;
 
         } catch (FileNotFoundException e) {
-            logger.error("VerCors report was not found.");
+            logger.info("VerCors report was not found; runtime checking enabled for all invariants");
             return new ArrayList<>();
         } catch (ParseException e){
             logger.error("VerCors report was not parsed correctly and will be not used for runtime verification");
