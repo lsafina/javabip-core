@@ -98,7 +98,7 @@ public class VerCorsReportParser {
             return componentResults;
 
         } catch (FileNotFoundException e) {
-            logger.info("VerCors report was not found; runtime checking enabled for all invariants");
+            logger.always().log("VerCors report was not found; runtime checking enabled for all invariants");
             return new ArrayList<>();
         } catch (ParseException e){
             logger.error("VerCors report was not parsed correctly and will be not used for runtime verification");
